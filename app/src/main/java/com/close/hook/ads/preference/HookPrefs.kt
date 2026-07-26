@@ -291,16 +291,29 @@ object HookPrefs {
             return null
         }
 
+        val resolvedFileName: String
         try {
-            val files = accessor.listRemoteFiles()
-            if (files == null || !files.contains(fileName)) return ""
+            val files = accessor.listRemoteFiles() ?: return null
+            val recoveryFileName = "$fileName.tmp"
+            val commitMarkerName = "$fileName.commit"
+            resolvedFileName = if (
+                !fileName.endsWith(".tmp") &&
+                !fileName.endsWith(".commit") &&
+                recoveryFileName in files &&
+                commitMarkerName in files
+            ) {
+                recoveryFileName
+            } else {
+                if (fileName !in files) return ""
+                fileName
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error checking remote files (IPC failure)", e)
             return null
         }
 
         return try {
-            accessor.openRemoteFile(fileName)?.use { pfd ->
+            accessor.openRemoteFile(resolvedFileName)?.use { pfd ->
                 InputStreamReader(
                     ParcelFileDescriptor.AutoCloseInputStream(pfd),
                     StandardCharsets.UTF_8
@@ -318,34 +331,37 @@ object HookPrefs {
             Log.w(TAG, "Write skipped — service unavailable: $fileName")
             return false
         }
-        // Write to a temp file first, then overwrite the target so a mid-write
-        // crash leaves the previous file intact rather than a truncated one.
         val tempName = "$fileName.tmp"
+        val commitMarkerName = "$fileName.commit"
+
+        fun writeRemoteText(targetName: String, text: String) {
+            service.openRemoteFile(targetName).use { pfd ->
+                FileOutputStream(pfd.fileDescriptor).use { fos ->
+                    fos.channel.truncate(0)
+                    fos.channel.position(0)
+                    fos.bufferedWriter(StandardCharsets.UTF_8).apply {
+                        write(text)
+                        flush()
+                    }
+                    fos.fd.sync()
+                }
+            }
+        }
+
         return try {
-            service.openRemoteFile(tempName).use { pfd ->
-                FileOutputStream(pfd.fileDescriptor).use { fos ->
-                    fos.channel.truncate(0)
-                    fos.channel.position(0)
-                    fos.bufferedWriter(StandardCharsets.UTF_8).apply {
-                        write(content)
-                        flush()
-                    }
-                    fos.fd.sync()
-                }
+            val remoteFiles = service.listRemoteFiles().orEmpty()
+            if (commitMarkerName in remoteFiles && !service.deleteRemoteFile(commitMarkerName)) {
+                Log.e(TAG, "Failed to clear stale commit marker: $commitMarkerName")
+                return false
             }
-            // Overwrite target from the successfully written temp
-            val tempContent = readAllTextFromFile(tempName) ?: return false
-            service.openRemoteFile(fileName).use { pfd ->
-                FileOutputStream(pfd.fileDescriptor).use { fos ->
-                    fos.channel.truncate(0)
-                    fos.channel.position(0)
-                    fos.bufferedWriter(StandardCharsets.UTF_8).apply {
-                        write(tempContent)
-                        flush()
-                    }
-                    fos.fd.sync()
-                }
-            }
+
+            // The marker is created only after the temp file is fully synced.
+            // Readers prefer that temp file while the marker exists.
+            writeRemoteText(tempName, content)
+            writeRemoteText(commitMarkerName, "ready")
+            writeRemoteText(fileName, content)
+
+            service.deleteRemoteFile(commitMarkerName)
             service.deleteRemoteFile(tempName)
             true
         } catch (e: Exception) {

@@ -104,7 +104,7 @@ internal object RequestHookHandler {
                 return@findAndHookMethod
             }
 
-            val host = RequestHook.dnsReverseCache[ip]
+            val host = RequestHook.getUnambiguousDnsHost(ip)
             val displayHost = host ?: ip
             val info = BlockedRequest(
                 requestType     = " CONNECT",

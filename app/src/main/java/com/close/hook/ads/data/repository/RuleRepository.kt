@@ -8,6 +8,7 @@ import com.close.hook.ads.data.model.RuleMatch
 import com.close.hook.ads.data.model.Url
 import com.close.hook.ads.data.RuleSnapshot
 import com.close.hook.ads.provider.UrlContentProvider
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -30,6 +31,7 @@ object RuleRepository {
     private val dirty = AtomicBoolean(true)
     // Guards only the background DB load — not the hot shouldBlock() path
     private val refreshing = AtomicBoolean(false)
+    private val initialLoadComplete = CountDownLatch(1)
 
     private val backgroundExecutor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "AdClose-RuleRefresh").apply { isDaemon = true }
@@ -64,6 +66,15 @@ object RuleRepository {
 
     // HOT PATH: pure volatile read — no lock, no IPC, no allocation
     fun shouldBlock(requestValue: String, host: String?): RuleMatch {
+        if (initialLoadComplete.count > 0L) {
+            scheduleRefresh()
+            try {
+                initialLoadComplete.await()
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }
+
         val now = System.currentTimeMillis()
         if (dirty.get() || now - lastRefreshAt >= MIN_REFRESH_INTERVAL_MS) {
             scheduleRefresh()
@@ -83,6 +94,7 @@ object RuleRepository {
                     doRefresh()
                 } finally {
                     refreshing.set(false)
+                    initialLoadComplete.countDown()
                 }
             }
         }
@@ -90,13 +102,14 @@ object RuleRepository {
 
     private fun doRefresh() {
         val rawContext = appContext ?: return
+        dirty.set(false)
         runCatching {
             val safeContext = rawContext.applicationContext ?: rawContext
             val rules = loadAllRules(safeContext)
             snapshot = RuleSnapshot.fromUrls(rules)
-            dirty.set(false)
             lastRefreshAt = System.currentTimeMillis()
         }.onFailure { error ->
+            dirty.set(true)
             Log.w(LOG_PREFIX, "Failed to refresh rule snapshot: ${error.message}")
         }
     }

@@ -9,7 +9,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.close.hook.ads.data.model.CustomHookInfo
 import com.close.hook.ads.data.repository.CustomHookRepository
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +20,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
@@ -77,6 +75,7 @@ class CustomHookViewModel(
 
     private val prettyJson = Json { prettyPrint = true }
     private var saveJob: Job? = null
+    private var hasPendingSave = false
 
     init {
         loadHookConfigs()
@@ -288,23 +287,21 @@ class CustomHookViewModel(
 
     private fun updateAndSaveConfigs(transform: (List<CustomHookInfo>) -> List<CustomHookInfo>) {
         _hookConfigs.update(transform)
+        hasPendingSave = true
 
         saveJob?.cancel()
         saveJob = viewModelScope.launch {
             delay(300L)
             repository.saveHookConfigs(currentPackageName, _hookConfigs.value)
+            hasPendingSave = false
         }
     }
 
     override fun onCleared() {
         super.onCleared()
-        saveJob?.let { job ->
-            if (job.isActive) {
-                @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
-                GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    repository.saveHookConfigs(currentPackageName, _hookConfigs.value)
-                }
-            }
+        if (hasPendingSave) {
+            repository.saveHookConfigs(currentPackageName, _hookConfigs.value)
+            hasPendingSave = false
         }
     }
 

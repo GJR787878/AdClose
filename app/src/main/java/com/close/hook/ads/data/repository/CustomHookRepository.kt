@@ -28,7 +28,7 @@ class CustomHookRepository(context: Context) {
         HookPrefs.getCustomHookConfigs(packageName)
     }
 
-    suspend fun saveHookConfigs(packageName: String?, configs: List<CustomHookInfo>) = withContext(Dispatchers.IO) {
+    fun saveHookConfigs(packageName: String?, configs: List<CustomHookInfo>) {
         HookPrefs.setCustomHookConfigs(packageName, configs)
     }
 

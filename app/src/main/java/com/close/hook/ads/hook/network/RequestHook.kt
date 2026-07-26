@@ -23,7 +23,9 @@ import java.net.URL
 import java.net.URLDecoder
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
+import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
@@ -54,14 +56,23 @@ object RequestHook {
         .build<String, Boolean>()
         .asMap()
 
-    // IP -> hostname reverse cache populated by the InetAddress DNS hook.
-    // Native connect() / sendto() hooks look the destination IP up here to
-    // recover the original hostname for rule matching.
+    // A CDN IP may serve multiple domains. Socket-level matching may use the
+    // hostname only while the mapping is unambiguous.
     internal val dnsReverseCache = CacheBuilder.newBuilder()
         .maximumSize(4000)
         .expireAfterWrite(15, TimeUnit.MINUTES)
-        .build<String, String>()
+        .build<String, MutableSet<String>>()
         .asMap()
+
+    private fun recordDnsHost(ip: String, host: String) {
+        val normalizedHost = host.trim().lowercase(Locale.ROOT)
+        if (normalizedHost.isEmpty()) return
+        dnsReverseCache.computeIfAbsent(ip) { ConcurrentHashMap.newKeySet() }
+            .add(normalizedHost)
+    }
+
+    internal fun getUnambiguousDnsHost(ip: String): String? =
+        dnsReverseCache[ip]?.singleOrNull()
 
     internal val requestBuffers = CacheBuilder.newBuilder()
         .expireAfterAccess(3, TimeUnit.MINUTES)
@@ -155,10 +166,10 @@ object RequestHook {
         val host = hostObject as? String ?: return false
         val fullAddress = when (result) {
             is InetAddress -> {
-                result.hostAddress?.also { dnsReverseCache[it] = host }
+                result.hostAddress?.also { recordDnsHost(it, host) }
             }
             is Array<*> -> result.filterIsInstance<InetAddress>()
-                .mapNotNull { it.hostAddress?.also { ip -> dnsReverseCache[ip] = host } }
+                .mapNotNull { it.hostAddress?.also { ip -> recordDnsHost(ip, host) } }
                 .joinToString(", ")
 
             else -> null
