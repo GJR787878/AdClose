@@ -202,7 +202,6 @@ class AppRepoPerformanceFragment : Fragment() {
                 filteredApps = appRepository.filterAndSortApps(
                     allApps,
                     AppFilterState(
-                        appType = "all",
                         filterOrder = 0,
                         isReverse = false,
                         keyword = "",

@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.text.Collator
 import java.util.Locale
@@ -44,7 +45,9 @@ class AppRepository(private val packageManager: PackageManager) {
     private val collator = Collator.getInstance(Locale.getDefault())
 
     fun getAllAppsFlow(): Flow<List<AppInfo>> = flow {
-        val connState = ServiceManager.connectionState.first { it !is ConnectionState.Connecting }
+        val connState = withTimeoutOrNull(5_000L) {
+            ServiceManager.connectionState.first { it !is ConnectionState.Connecting }
+        } ?: ConnectionState.Disconnected
         val modActive = connState is ConnectionState.Connected
 
         val pkgs = runCatching {
@@ -54,8 +57,9 @@ class AppRepository(private val packageManager: PackageManager) {
         val allPrefs = HookPrefs.getAll()
 
         val appList = coroutineScope {
+            val limitedDispatcher = Dispatchers.IO.limitedParallelism(8)
             pkgs.map { pkg ->
-                async {
+                async(limitedDispatcher) {
                     val app = pkg.applicationInfo ?: return@async null
 
                     val verCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -117,15 +121,6 @@ class AppRepository(private val packageManager: PackageManager) {
 
         return apps.asSequence()
             .filter { app ->
-                val typeMatch = when (filter.appType) {
-                    "all" -> true
-                    "user" -> !app.isSystem
-                    "system" -> app.isSystem
-                    "configured" -> app.isEnable == 1
-                    else -> true
-                }
-                if (!typeMatch) return@filter false
-
                 if (hasKeyword) {
                     if (!app.appName.contains(keyword, true) &&
                         !app.packageName.contains(keyword, true)

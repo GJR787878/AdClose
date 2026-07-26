@@ -39,8 +39,6 @@ class RequestFragment : BasePagerFragment(), IOnFabClickContainer {
     private lateinit var fab: FloatingActionButton
     private val fabViewBehavior by lazy { HideBottomViewOnScrollBehavior<FloatingActionButton>() }
 
-    private val backPressDelegates = mutableMapOf<Int, OnBackPressListener>()
-
     private val receiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val request = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -131,24 +129,19 @@ class RequestFragment : BasePagerFragment(), IOnFabClickContainer {
         controller?.search(text)
     }
 
-    override fun getFragment(position: Int): Fragment {
-        val fragment = when (position) {
-            0 -> RequestListFragment.newInstance("all")
-            1 -> RequestListFragment.newInstance("block")
-            2 -> RequestListFragment.newInstance("pass")
-            else -> throw IllegalArgumentException()
-        }
-        if (fragment is OnBackPressListener) {
-            backPressDelegates[position] = fragment
-        }
-        return fragment
+    override fun getFragment(position: Int): Fragment = when (position) {
+        0 -> RequestListFragment.newInstance("all")
+        1 -> RequestListFragment.newInstance("block")
+        2 -> RequestListFragment.newInstance("pass")
+        else -> throw IllegalArgumentException()
     }
 
     override fun onBackPressed(): Boolean {
-        val currentChildListener = backPressDelegates[binding.viewPager.currentItem]
-        if (currentChildListener?.onBackPressed() == true) {
-            return true
-        }
+        val currentItemId = binding.viewPager.adapter?.getItemId(binding.viewPager.currentItem)
+        val currentListener = currentItemId
+            ?.let { childFragmentManager.findFragmentByTag("f$it") }
+            as? OnBackPressListener
+        if (currentListener?.onBackPressed() == true) return true
         return super.onBackPressed()
     }
 

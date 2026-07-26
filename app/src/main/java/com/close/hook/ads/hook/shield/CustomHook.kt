@@ -3,6 +3,7 @@ package com.close.hook.ads.hook.shield
 import android.content.Context
 import com.close.hook.ads.data.model.CustomHookInfo
 import com.close.hook.ads.data.model.HookMethodType
+import com.close.hook.ads.data.model.LogEntry
 import com.close.hook.ads.hook.util.HookUtil
 import com.close.hook.ads.hook.util.LogProxy
 import com.close.hook.ads.hook.util.StringFinderKit
@@ -15,15 +16,30 @@ object CustomHook {
 
     private const val TAG = "CustomHook"
 
-    fun hookCustomAds(classLoader: ClassLoader, customConfigs: List<CustomHookInfo>, isScopeEnabled: Boolean) {
+    private fun log(config: CustomHookInfo, message: String, stackTrace: String? = null) {
+        LogProxy.log(
+            tag = TAG,
+            message = message,
+            stackTrace = stackTrace,
+            hookScope = config.packageName ?: LogEntry.GLOBAL_HOOK_SCOPE
+        )
+    }
+
+    fun hookCustomAds(
+        classLoader: ClassLoader,
+        customConfigs: List<CustomHookInfo>,
+        isScopeEnabled: Boolean,
+        packageName: String?
+    ) {
         if (!isScopeEnabled) return
 
-        customConfigs.forEach { config ->
+        customConfigs.forEach { storedConfig ->
+            val config = storedConfig.copy(packageName = packageName)
             if (config.isEnabled) {
                 try {
                     applyHookConfig(config, classLoader)
                 } catch (e: Throwable) {
-                    LogProxy.log(TAG, "Error applying config for ${config.className}: ${e.message}")
+                    log(config, "Error applying config for ${config.className}: ${e.message}")
                 }
             }
         }
@@ -51,7 +67,7 @@ object CustomHook {
         if (methodNames.isEmpty()) return
 
         HookUtil.hookMultipleMethods(classLoader, config.className, methodNames.toTypedArray(), returnValue)
-        LogProxy.log(TAG, "hookMultipleMethods - Class=${config.className}, Methods=$methodNames, Return=$returnValue")
+        log(config, "hookMultipleMethods - Class=${config.className}, Methods=$methodNames, Return=$returnValue")
     }
 
     private fun handleFindAndHookMethod(
@@ -78,7 +94,7 @@ object CustomHook {
         
         HookUtil.hookAllMethods(config.className, methodName, config.hookPoint, { param ->
             handleHookedMethod(param, config, returnValue, paramReplacements)
-            LogProxy.log(TAG, "hookAllMethods - Class=${config.className}, Method=$methodName", HookUtil.getFormattedStackTrace())
+            log(config, "hookAllMethods - Class=${config.className}, Method=$methodName", HookUtil.getFormattedStackTrace())
         }, classLoader)
     }
 
@@ -88,7 +104,7 @@ object CustomHook {
 
         val fieldValue = parseReturnValue(config.fieldValue)
         HookUtil.setStaticObjectField(config.className, classLoader, fieldName, fieldValue)
-        LogProxy.log(TAG, "setStaticObjectField - Class=${config.className}, Field=$fieldName, Value=$fieldValue")
+        log(config, "setStaticObjectField - Class=${config.className}, Field=$fieldName, Value=$fieldValue")
     }
 
     private fun handleHookByStringMatch(config: CustomHookInfo, returnValue: Any?) {
@@ -98,7 +114,7 @@ object CustomHook {
         SDKAdsKit.hookMethodsByStringMatch(config.id, searchStrings) { method ->
             HookUtil.hookMethod(method, config.hookPoint) { param ->
                 param.result = returnValue
-                LogProxy.log(TAG, "hookMethodsByStringMatch - ID=${config.id}, Method=$method", HookUtil.getFormattedStackTrace())
+                log(config, "hookMethodsByStringMatch - ID=${config.id}, Method=$method", HookUtil.getFormattedStackTrace())
             }
         }
     }
@@ -111,7 +127,7 @@ object CustomHook {
             methodData.getMethodInstance(classLoader)?.let { method ->
                 HookUtil.hookMethod(method, config.hookPoint) { param ->
                     param.result = returnValue
-                    LogProxy.log(TAG, "findMethodsWithString - ID=${config.id}, Found=$method", HookUtil.getFormattedStackTrace())
+                    log(config, "findMethodsWithString - ID=${config.id}, Found=$method", HookUtil.getFormattedStackTrace())
                 }
             }
         }
@@ -134,7 +150,7 @@ object CustomHook {
 
         HookUtil.findAndHookMethod(config.className, methodName, paramTypes, hookPoint, { param ->
             val argsStr = if (param.args != null) Arrays.toString(param.args) else "null"
-            LogProxy.log(TAG, "LOG_PARAMS: ${config.className}.$methodName Args: $argsStr", HookUtil.getFormattedStackTrace())
+            log(config, "LOG_PARAMS: ${config.className}.$methodName Args: $argsStr", HookUtil.getFormattedStackTrace())
         }, classLoader)
     }
 
@@ -144,7 +160,7 @@ object CustomHook {
 
         HookUtil.findAndHookMethod(config.className, methodName, paramTypes, "after", { param ->
             val resultStr = param.result?.toString() ?: "null"
-            LogProxy.log(TAG, "LOG_RETURN: ${config.className}.$methodName Result: $resultStr", HookUtil.getFormattedStackTrace())
+            log(config, "LOG_RETURN: ${config.className}.$methodName Result: $resultStr", HookUtil.getFormattedStackTrace())
         }, classLoader)
     }
 
@@ -161,7 +177,7 @@ object CustomHook {
             paramReplacements.forEach { (index, value) ->
                 if (index >= 0 && index < args.size) {
                     args[index] = value
-                    LogProxy.log(TAG, "Replaced parameter at index $index with value '$value' for method: $fullMethodName", HookUtil.getFormattedStackTrace())
+                    log(config, "Replaced parameter at index $index with value '$value' for method: $fullMethodName", HookUtil.getFormattedStackTrace())
                 }
             }
             return 
@@ -169,7 +185,7 @@ object CustomHook {
 
         if (config.returnValue != null) {
             param.result = returnValue
-            LogProxy.log(TAG, "Set return value to '$returnValue' for method: $fullMethodName", HookUtil.getFormattedStackTrace())
+            log(config, "Set return value to '$returnValue' for method: $fullMethodName", HookUtil.getFormattedStackTrace())
             return
         }
 
@@ -180,9 +196,9 @@ object CustomHook {
             val hasInterfaceParam = paramClasses.any { it.isInterface }
             if (hasInterfaceParam) {
                 param.result = null
-                LogProxy.log(TAG, "Builder method has interface param, returned null to interrupt chain: $fullMethodName", HookUtil.getFormattedStackTrace())
+                log(config, "Builder method has interface param, returned null to interrupt chain: $fullMethodName", HookUtil.getFormattedStackTrace())
             } else {
-                LogProxy.log(TAG, "Builder method has no interface param, skip original method body: $fullMethodName", HookUtil.getFormattedStackTrace())
+                log(config, "Builder method has no interface param, skip original method body: $fullMethodName", HookUtil.getFormattedStackTrace())
             }
             return
         }
@@ -203,7 +219,7 @@ object CustomHook {
 
                 if (typeName != null) {
                     args[i] = defaultVal
-                    LogProxy.log(TAG, "Replaced $typeName parameter at index $i with '$defaultVal' for method: $fullMethodName", HookUtil.getFormattedStackTrace())
+                    log(config, "Replaced $typeName parameter at index $i with '$defaultVal' for method: $fullMethodName", HookUtil.getFormattedStackTrace())
                 }
             }
         }
@@ -213,19 +229,22 @@ object CustomHook {
         val currentAppClass = XposedHelpers.findClass("android.app.ActivityThread", null) ?: return
         val realAppContext = XposedHelpers.callStaticMethod(currentAppClass, "currentApplication") as? Context ?: return
 
-        val fakeContext = SmartFakeContext(realAppContext)
+        val fakeContext = SmartFakeContext(
+            realAppContext,
+            config.packageName ?: LogEntry.GLOBAL_HOOK_SCOPE
+        )
         val fullMethodName = "${config.className}.${config.methodNames?.firstOrNull()}"
         val method = param.method as Method
 
         if (Context::class.java.isAssignableFrom(method.returnType)) {
             param.result = fakeContext
-            LogProxy.log(TAG, "Replaced Context return value with FakeContext for method: $fullMethodName", HookUtil.getFormattedStackTrace())
+            log(config, "Replaced Context return value with FakeContext for method: $fullMethodName", HookUtil.getFormattedStackTrace())
         }
 
         param.args?.forEachIndexed { i, arg ->
             if (arg is Context) {
                 param.args[i] = fakeContext
-                LogProxy.log(TAG, "Replaced Context parameter at index $i with FakeContext for method: $fullMethodName", HookUtil.getFormattedStackTrace())
+                log(config, "Replaced Context parameter at index $i with FakeContext for method: $fullMethodName", HookUtil.getFormattedStackTrace())
             }
         }
     }

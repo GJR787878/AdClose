@@ -13,22 +13,22 @@ import kotlinx.coroutines.flow.Flow
 interface UrlDao {
 
     @Insert
-    fun insert(url: Url): Long
+    suspend fun insert(url: Url): Long
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    fun insertOrIgnore(url: Url): Long
+    suspend fun insertOrIgnore(url: Url): Long
 
     @Query("SELECT * FROM url_info")
     fun findAllList(): List<Url>
 
     @Query("DELETE FROM url_info WHERE id = :id")
-    fun deleteById(id: Long): Int
+    suspend fun deleteById(id: Long): Int
 
     @Update
-    fun update(url: Url): Int
+    suspend fun update(url: Url): Int
 
     @Insert
-    fun insertAll(urls: List<Url>): List<Long>
+    suspend fun insertAll(urls: List<Url>): List<Long>
 
     @Query("SELECT * FROM url_info ORDER BY id DESC")
     fun loadAllList(): Flow<List<Url>>
@@ -55,20 +55,20 @@ interface UrlDao {
     fun existsKeywordMatch(value: String): Boolean
 
     @Query("SELECT COUNT(*) > 0 FROM url_info WHERE url = :url")
-    fun isExist(url: String): Boolean
+    suspend fun isExist(url: String): Boolean
 
     @Query("SELECT COUNT(*) > 0 FROM url_info WHERE type = :type AND url = :url")
-    fun isExist(type: String, url: String): Boolean
+    suspend fun isExist(type: String, url: String): Boolean
 
     @Delete
-    fun deleteList(list: List<Url>): Int
+    suspend fun deleteList(list: List<Url>): Int
 
     @Delete
-    fun deleteUrl(url: Url): Int
+    suspend fun deleteUrl(url: Url): Int
 
     @Query("DELETE FROM url_info WHERE type = :type AND url = :url")
-    fun deleteUrlString(type: String, url: String): Int
+    suspend fun deleteUrlString(type: String, url: String): Int
 
     @Query("DELETE FROM url_info")
-    fun deleteAll(): Int
+    suspend fun deleteAll(): Int
 }

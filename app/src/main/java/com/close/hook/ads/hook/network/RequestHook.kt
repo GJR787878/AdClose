@@ -54,6 +54,15 @@ object RequestHook {
         .build<String, Boolean>()
         .asMap()
 
+    // IP -> hostname reverse cache populated by the InetAddress DNS hook.
+    // Native connect() / sendto() hooks look the destination IP up here to
+    // recover the original hostname for rule matching.
+    internal val dnsReverseCache = CacheBuilder.newBuilder()
+        .maximumSize(4000)
+        .expireAfterWrite(15, TimeUnit.MINUTES)
+        .build<String, String>()
+        .asMap()
+
     internal val requestBuffers = CacheBuilder.newBuilder()
         .expireAfterAccess(3, TimeUnit.MINUTES)
         .build<Int, ByteArrayOutputStream>()
@@ -145,9 +154,12 @@ object RequestHook {
     internal fun processDnsRequest(hostObject: Any?, result: Any?): Boolean {
         val host = hostObject as? String ?: return false
         val fullAddress = when (result) {
-            is InetAddress -> result.hostAddress
+            is InetAddress -> {
+                result.hostAddress?.also { dnsReverseCache[it] = host }
+            }
             is Array<*> -> result.filterIsInstance<InetAddress>()
-                .joinToString(", ") { it.hostAddress.orEmpty() }
+                .mapNotNull { it.hostAddress?.also { ip -> dnsReverseCache[ip] = host } }
+                .joinToString(", ")
 
             else -> null
         }

@@ -48,7 +48,10 @@ class BlockListAdapter(
         fun getItemDetails(): ItemDetailsLookup.ItemDetails<Url> =
             object : ItemDetailsLookup.ItemDetails<Url>() {
                 override fun getPosition(): Int = bindingAdapterPosition
-                override fun getSelectionKey(): Url? = getItem(bindingAdapterPosition)
+                override fun getSelectionKey(): Url? {
+                    val pos = bindingAdapterPosition
+                    return if (pos == RecyclerView.NO_POSITION) null else getItem(pos)
+                }
             }
 
         init {

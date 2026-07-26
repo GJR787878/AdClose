@@ -57,9 +57,8 @@ class DataSource(context: Context) {
     suspend fun deleteAll(): Int =
         withContext(Dispatchers.IO) { urlDao.deleteAll() }
 
-    fun getAllUrls(): List<Url> {
-        return urlDao.findAllList()
-    }
+    suspend fun getAllUrls(): List<Url> =
+        withContext(Dispatchers.IO) { urlDao.findAllList() }
 
     companion object {
         @Volatile

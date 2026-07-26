@@ -47,6 +47,9 @@ object LogProxy {
     @Volatile
     private var currentPackageName: String? = null
 
+    @Volatile
+    private var enabledHookScopes: Set<String> = emptySet()
+
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (state.get() == State.DISCONNECTING) return
@@ -62,7 +65,8 @@ object LogProxy {
         }
     }
 
-    fun init(context: Context) {
+    fun init(context: Context, hookScopes: Set<String>) {
+        enabledHookScopes = hookScopes.toSet()
         if (!isInitialized.compareAndSet(false, true)) return
         currentPackageName = context.packageName
 
@@ -97,8 +101,14 @@ object LogProxy {
         }
     }
 
-    fun log(tag: String, message: String, stackTrace: String? = null) {
+    fun log(
+        tag: String,
+        message: String,
+        stackTrace: String? = null,
+        hookScope: String? = null
+    ) {
         if (!isInitialized.get()) return
+        if (hookScope != null && hookScope !in enabledHookScopes) return
         val pkgName = currentPackageName ?: return
 
         val entry = LogEntry(
@@ -107,7 +117,8 @@ object LogProxy {
             tag = tag,
             message = message,
             packageName = pkgName,
-            stackTrace = stackTrace?.take(MAX_STACK_TRACE_LENGTH)
+            stackTrace = stackTrace?.take(MAX_STACK_TRACE_LENGTH),
+            hookScope = hookScope
         )
         logChannel.trySend(entry)
     }
@@ -159,6 +170,7 @@ object LogProxy {
 
         loggerService = null
         currentPackageName = null
+        enabledHookScopes = emptySet()
         state.set(State.DISCONNECTED)
         isInitialized.set(false)
         XposedBridge.log("LogProxy: Shutdown complete.")

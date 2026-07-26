@@ -2,6 +2,7 @@ package com.close.hook.ads.hook
 
 import android.content.Context
 import android.util.Log
+import com.close.hook.ads.data.model.LogEntry
 import com.close.hook.ads.hook.common.DisableClipboard
 import com.close.hook.ads.hook.common.DisableFlagSecure
 import com.close.hook.ads.hook.common.DisableShakeAd
@@ -76,22 +77,32 @@ object HookLogic {
         packageName: String,
         context: Context
     ) {
-        val hookTasks = listOf(
-            { hookPrefs.getCustomHookConfigs(null) } to true,
-            { hookPrefs.getCustomHookConfigs(packageName) } to hookPrefs.getOverallHookEnabled(packageName)
+        val appHooksEnabled = hookPrefs.getOverallHookEnabled(packageName)
+        CustomHook.hookCustomAds(
+            classLoader,
+            hookPrefs.getCustomHookConfigs(null),
+            isScopeEnabled = true,
+            packageName = null
+        )
+        CustomHook.hookCustomAds(
+            classLoader,
+            hookPrefs.getCustomHookConfigs(packageName),
+            isScopeEnabled = appHooksEnabled,
+            packageName = packageName
         )
 
-        hookTasks.forEach { (configProvider, isEnabled) ->
-            CustomHook.hookCustomAds(classLoader, configProvider(), isEnabled)
+        val enabledLogScopes = buildSet {
+            if (hookPrefs.getEnableLogging(null)) add(LogEntry.GLOBAL_HOOK_SCOPE)
+            if (appHooksEnabled && hookPrefs.getEnableLogging(packageName)) add(packageName)
+        }
+        if (enabledLogScopes.isNotEmpty()) {
+            LogProxy.init(context, enabledLogScopes)
         }
 
-        if (hookPrefs.getOverallHookEnabled(packageName)) {
+        if (appHooksEnabled) {
             AutoHookAds.registerAutoDetectReceiver(context)
             hookScope.launch {
                 AutoHookAds.findAndCacheSdkMethods(context, packageName)
-            }
-            if (hookPrefs.getEnableLogging(packageName)) {
-                LogProxy.init(context)
             }
         }
 

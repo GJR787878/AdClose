@@ -52,8 +52,7 @@ class LogViewModel(private val packageName: String?) : ViewModel() {
     }
 
     private fun processNewLogs(newLogs: List<LogEntry>) {
-        val filtered = if (packageName == null) newLogs
-                       else newLogs.filter { it.packageName == packageName }
+        val filtered = newLogs.filter { LogRepository.belongsToHookScope(it, packageName) }
         if (filtered.isEmpty()) return
 
         _allLogs.update { currentLogs ->
@@ -71,7 +70,8 @@ class LogViewModel(private val packageName: String?) : ViewModel() {
     }
 
     fun clearLogs() {
-        LogRepository.clearLogs()
+        LogRepository.clearLogsForPackage(packageName)
+        _allLogs.value = emptyList()
     }
 
     fun setSearchQuery(query: String) {

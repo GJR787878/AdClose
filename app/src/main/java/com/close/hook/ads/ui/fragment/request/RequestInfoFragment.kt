@@ -304,8 +304,7 @@ class RequestInfoFragment : BaseFragment<FragmentRequestInfoBinding>(), OnBackPr
         val ext =
             if (content.trimStart().startsWith("{") || content.trimStart().startsWith("["))
                 "json" else "txt"
-        val fileName =
-            "requestbody_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.$ext"
+        val fileName = "requestbody_${FILE_DATE_FORMAT.format(Date())}.$ext"
         createDocumentLauncher.launch(fileName)
     }
 
@@ -318,8 +317,7 @@ class RequestInfoFragment : BaseFragment<FragmentRequestInfoBinding>(), OnBackPr
         val ext =
             if (content.trimStart().startsWith("{") || content.trimStart().startsWith("["))
                 "json" else "txt"
-        val fileName =
-            "responsebody_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.$ext"
+        val fileName = "responsebody_${FILE_DATE_FORMAT.format(Date())}.$ext"
         createDocumentLauncher.launch(fileName)
     }
 
@@ -396,5 +394,9 @@ class RequestInfoFragment : BaseFragment<FragmentRequestInfoBinding>(), OnBackPr
         val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(windowToken, 0)
         this.clearFocus()
+    }
+
+    companion object {
+        private val FILE_DATE_FORMAT = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
     }
 }

@@ -10,10 +10,10 @@ import com.close.hook.ads.data.repository.DataManagerRepository
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.nio.charset.StandardCharsets
@@ -35,11 +35,11 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
     private val _uiState = MutableStateFlow(DataManagerState())
     val uiState = _uiState.asStateFlow()
 
-    private val _exportEvent = MutableSharedFlow<ExportEvent>()
-    val exportEvent = _exportEvent.asSharedFlow()
+    private val exportEvents = Channel<ExportEvent>(Channel.BUFFERED)
+    val exportEvent = exportEvents.receiveAsFlow()
 
-    private val _viewFileEvent = MutableSharedFlow<ViewFileEvent>()
-    val viewFileEvent = _viewFileEvent.asSharedFlow()
+    private val viewFileEvents = Channel<ViewFileEvent>(Channel.BUFFERED)
+    val viewFileEvent = viewFileEvents.receiveAsFlow()
 
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
@@ -79,7 +79,7 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
     fun loadFileForView(item: ManagedItem) {
         viewModelScope.launch {
             if (item.type == ItemType.DATABASE) {
-                _viewFileEvent.emit(ViewFileEvent.Failed("Database file cannot be viewed as text."))
+                viewFileEvents.send(ViewFileEvent.Failed("Database file cannot be viewed as text."))
                 return@launch
             }
 
@@ -100,12 +100,12 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
                     } catch (e: Exception) {
                         contentStr
                     }
-                    _viewFileEvent.emit(ViewFileEvent.Success(formattedContent, item.name))
+                    viewFileEvents.send(ViewFileEvent.Success(formattedContent, item.name))
                 } catch (e: Exception) {
-                    _viewFileEvent.emit(ViewFileEvent.Failed("Failed to parse file content: ${e.message}"))
+                    viewFileEvents.send(ViewFileEvent.Failed("Failed to parse file content: ${e.message}"))
                 }
             } else {
-                _viewFileEvent.emit(ViewFileEvent.Failed("Failed to load file content."))
+                viewFileEvents.send(ViewFileEvent.Failed("Failed to load file content."))
             }
         }
     }
@@ -121,9 +121,9 @@ class DataManagerViewModel(application: Application) : AndroidViewModel(applicat
                     ItemType.PREFERENCE -> "${item.name}.xml"
                     else -> item.name
                 }
-                _exportEvent.emit(ExportEvent.Ready(exportFileName, content))
+                exportEvents.send(ExportEvent.Ready(exportFileName, content))
             } else {
-                _exportEvent.emit(ExportEvent.Failed)
+                exportEvents.send(ExportEvent.Failed)
             }
         }
     }

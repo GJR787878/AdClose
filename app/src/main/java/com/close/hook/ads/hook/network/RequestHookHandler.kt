@@ -8,7 +8,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.close.hook.ads.data.model.BlockedRequest
 import com.close.hook.ads.hook.util.HookUtil
-import com.close.hook.ads.hook.util.TeeInputStream
+import com.close.hook.ads.util.TeeInputStream
 import com.close.hook.ads.preference.HookPrefs
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
@@ -64,10 +64,69 @@ internal object RequestHookHandler {
     fun init(context: Context) {
         applicationContext = context
         setupDNSRequestHook()
+        setupConnectHook()
         setupSocketHook()
         setupConscryptEngineHook()
         setupWebViewRequestHook()
         setupCronetRequestHook() // ByteDance
+    }
+
+    /**
+     * Universal socket-level domain block hook on libcore.io.BlockGuardOs.connect.
+     *
+     * Every user-app socket — TCP via Socket -> IoBridge.connect, UDP via
+     * DatagramSocket -> PlainDatagramSocketImpl, including QUIC / HTTP/3
+     * sockets, OkHttp's raw sockets, Chromium's NIO sockets — bottoms out
+     * through Libcore.os.connect(), which in user processes is BlockGuardOs.
+     * Intercepting here makes the existing rule engine apply regardless of
+     * application-layer protocol.
+     */
+    private fun setupConnectHook() {
+        HookUtil.findAndHookMethod(
+            "libcore.io.BlockGuardOs",
+            "connect",
+            arrayOf(
+                java.io.FileDescriptor::class.java,
+                InetAddress::class.java,
+                Int::class.javaPrimitiveType
+            ),
+            "before"
+        ) { param ->
+            val addr = param.args[1] as? InetAddress ?: return@findAndHookMethod
+            val port = param.args[2] as? Int ?: return@findAndHookMethod
+            val ip = addr.hostAddress ?: return@findAndHookMethod
+
+            // Skip loopback / link-local / metadata destinations so we don't
+            // misclassify in-app IPC, mDNS, NTP-on-router style traffic.
+            if (ip == "127.0.0.1" || ip == "::1" ||
+                ip.startsWith("169.254.") ||
+                ip.startsWith("fe80:", ignoreCase = true)) {
+                return@findAndHookMethod
+            }
+
+            val host = RequestHook.dnsReverseCache[ip]
+            val displayHost = host ?: ip
+            val info = BlockedRequest(
+                requestType     = " CONNECT",
+                requestValue    = displayHost,
+                method          = null,
+                urlString       = null,
+                requestHeaders  = null,
+                requestBody     = null,
+                responseCode    = -1,
+                responseMessage = null,
+                responseHeaders = null,
+                responseBody    = null,
+                responseBodyContentType = null,
+                stack           = HookUtil.getFormattedStackTrace(),
+                dnsHost         = host,
+                fullAddress     = "$ip:$port",
+                requestId       = java.util.UUID.randomUUID().toString()
+            )
+            if (RequestHook.checkShouldBlockRequest(info)) {
+                param.throwable = java.net.ConnectException("Blocked by AdClose: $displayHost")
+            }
+        }
     }
 
     private fun setupDNSRequestHook() {

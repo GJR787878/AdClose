@@ -73,7 +73,7 @@ class RequestListAdapter(
             root.tag = request
             cardView.isChecked = isSelected
 
-            appName.text = request.appName + if (request.stack.isNullOrEmpty()) "" else " LOG"
+            appName.text = request.appName
             this.request.text = request.request
             timestamp.text = DATE_FORMATTER.format(
                 Instant.ofEpochMilli(request.timestamp).atZone(ZONE_ID)
@@ -117,8 +117,7 @@ class RequestListAdapter(
         }
 
         private fun openRequestInfoActivity(request: RequestInfo) {
-            val context = itemView.context
-            val intent = Intent(context, RequestInfoActivity::class.java).apply {
+            Intent(itemView.context, RequestInfoActivity::class.java).apply {
                 putExtra("method", request.method)
                 putExtra("urlString", request.urlString)
                 putExtra("requestHeaders", request.requestHeaders)
@@ -130,16 +129,7 @@ class RequestListAdapter(
                 putExtra("stack", request.stack)
                 putExtra("dnsHost", request.dnsHost)
                 putExtra("fullAddress", request.fullAddress)
-            }
-            val activity = context as? android.app.Activity
-            if (activity != null) {
-                binding.cardView.transitionName = SHARED_CARD_NAME
-                val options = androidx.core.app.ActivityOptionsCompat
-                    .makeSceneTransitionAnimation(activity, binding.cardView, SHARED_CARD_NAME)
-                activity.startActivity(intent, options.toBundle())
-            } else {
-                context.startActivity(intent)
-            }
+            }.also { itemView.context.startActivity(it) }
         }
 
         private fun copyToClipboard(text: String) {
@@ -169,8 +159,6 @@ class RequestListAdapter(
     }
 
     companion object {
-        const val SHARED_CARD_NAME = "request_card"
-
         private val ZONE_ID: ZoneId = ZoneId.systemDefault()
 
         private val DATE_FORMATTER: DateTimeFormatter =

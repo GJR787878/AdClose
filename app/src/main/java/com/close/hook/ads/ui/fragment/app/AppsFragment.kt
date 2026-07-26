@@ -118,6 +118,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
     companion object {
         private const val PREFS_FILE_NAME = "com.close.hook.ads_preferences.json"
         private const val CUSTOM_HOOKS_PREFIX = "custom_hooks_"
+        private val DATE_FORMAT = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 
         @JvmStatic
         fun newInstance(type: String) =
@@ -306,31 +307,8 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
                 clipToPadding = false
             }
 
-            addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                private var totalDy = 0
-                private val scrollThreshold = 20.dp
-
-                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                    super.onScrolled(recyclerView, dx, dy)
-                    val navContainer = activity as? INavContainer
-
-                    if (dy > 0) {
-                        totalDy += dy
-                        if (totalDy > scrollThreshold) {
-                            navContainer?.hideNavigation()
-                            totalDy = 0
-                        }
-                    } else if (dy < 0) {
-                        totalDy += dy
-                        if (totalDy < -scrollThreshold) {
-                            navContainer?.showNavigation()
-                            totalDy = 0
-                        }
-                    }
-                }
-            })
-
             FastScrollerBuilder(this).useMd2Style().build()
+            attachNavScrollListener()
         }
     }
 
@@ -494,8 +472,6 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
         KeyboardUtils.hideKeyboard(requireView())
 
         infoBinding.apply {
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-
             this.icon.setImageDrawable(icon)
             appName.text = appInfo.appName
             packageName.apply {
@@ -524,11 +500,11 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
             }
             installTime.apply {
                 title.text = getString(R.string.install_time)
-                value.text = dateFormat.format(Date(appInfo.firstInstallTime))
+                value.text = DATE_FORMAT.format(Date(appInfo.firstInstallTime))
             }
             updateTime.apply {
                 title.text = getString(R.string.update_time)
-                value.text = dateFormat.format(Date(appInfo.lastUpdateTime))
+                value.text = DATE_FORMAT.format(Date(appInfo.lastUpdateTime))
             }
         }
         appInfoDialog?.show()
@@ -537,6 +513,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
     override fun onReturnTop() {
         binding.recyclerView.scrollToPosition(0)
         (activity as? MainActivity)?.showNavigation()
+        (parentFragment as? AppsPagerFragment)?.showFabs()
     }
 
     override fun onResume() {
@@ -682,10 +659,12 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
         val content = inputStream.reader().use { it.readText() }
         if (content.isBlank()) throw IOException("Backup file is empty.")
 
+        val bytes = content.toByteArray(Charsets.UTF_8)
         service.openRemoteFile(fileName)?.use { pfd ->
             FileOutputStream(pfd.fileDescriptor).use { fos ->
                 fos.channel.truncate(0)
-                fos.write(content.toByteArray(Charsets.UTF_8))
+                fos.write(bytes)
+                fos.fd.sync()
             }
         } ?: throw IOException("Could not open remote file for writing: $fileName")
     }
@@ -697,10 +676,12 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
             while (zipEntry != null) {
                 val fileName = zipEntry.name
                 if (fileName == PREFS_FILE_NAME || fileName.startsWith(CUSTOM_HOOKS_PREFIX)) {
+                    val bytes = zis.readBytes()
                     service.openRemoteFile(fileName)?.use { pfd ->
                         FileOutputStream(pfd.fileDescriptor).use { fos ->
                             fos.channel.truncate(0)
-                            zis.copyTo(fos)
+                            fos.write(bytes)
+                            fos.fd.sync()
                         }
                     }
                 }

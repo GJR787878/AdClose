@@ -10,6 +10,7 @@ import android.net.Uri
 import com.close.hook.ads.data.dao.UrlDao
 import com.close.hook.ads.data.database.UrlDatabase
 import com.close.hook.ads.data.model.Url
+import kotlinx.coroutines.runBlocking
 
 class UrlContentProvider : ContentProvider() {
 
@@ -57,25 +58,26 @@ class UrlContentProvider : ContentProvider() {
     }
 
     private fun urlsToCursor(urls: List<Url>): MatrixCursor {
-        val cursor = MatrixCursor(arrayOf(Url.URL_TYPE, Url.URL_ADDRESS))
+        val cursor = MatrixCursor(arrayOf(Url.URL_TYPE, Url.URL_ADDRESS, "id"))
         urls.forEach { url ->
-            cursor.addRow(arrayOf(url.type, url.url))
+            cursor.addRow(arrayOf<Any>(url.type, url.url, url.id))
         }
         return cursor
     }
 
     override fun getType(uri: Uri): String? {
         return when (uriMatcher.match(uri)) {
-            ID_URL_DATA -> "vnd.android.cursor.dir/$AUTHORITY.$URL_TABLE_NAME"
-            ID_URL_DATA_ITEM -> "vnd.android.cursor.item/$AUTHORITY.$URL_TABLE_NAME"
+            ID_URL_DATA -> "vnd.android.cursor.dir/vnd.$AUTHORITY.$URL_TABLE_NAME"
+            ID_URL_DATA_ITEM -> "vnd.android.cursor.item/vnd.$AUTHORITY.$URL_TABLE_NAME"
             else -> null
         }
     }
 
     override fun insert(uri: Uri, values: ContentValues?): Uri? {
         if (uriMatcher.match(uri) != ID_URL_DATA || values == null) return null
+        val url = values.toUrlOrNull() ?: return null
 
-        val insertedId = urlDao.insert(values.toUrl())
+        val insertedId = runBlocking { urlDao.insert(url) }
         if (insertedId <= 0L) return null
 
         notifyChange(uri)
@@ -85,7 +87,7 @@ class UrlContentProvider : ContentProvider() {
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<String>?): Int {
         if (uriMatcher.match(uri) != ID_URL_DATA_ITEM) return 0
 
-        val deleted = urlDao.deleteById(ContentUris.parseId(uri))
+        val deleted = runBlocking { urlDao.deleteById(ContentUris.parseId(uri)) }
         if (deleted > 0) {
             notifyChange(Uri.withAppendedPath(baseContentUri, URL_TABLE_NAME))
         }
@@ -94,12 +96,11 @@ class UrlContentProvider : ContentProvider() {
 
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<String>?): Int {
         if (uriMatcher.match(uri) != ID_URL_DATA_ITEM || values == null) return 0
-
-        val url = values.toUrl().apply {
+        val url = values.toUrlOrNull()?.apply {
             id = ContentUris.parseId(uri)
-        }
+        } ?: return 0
 
-        val updated = urlDao.update(url)
+        val updated = runBlocking { urlDao.update(url) }
         if (updated > 0) {
             notifyChange(Uri.withAppendedPath(baseContentUri, URL_TABLE_NAME))
         }
@@ -110,11 +111,11 @@ class UrlContentProvider : ContentProvider() {
         context?.contentResolver?.notifyChange(uri, null)
     }
 
-    private fun ContentValues.toUrl(): Url {
-        return Url(
-            type = getAsString(Url.URL_TYPE).orEmpty(),
-            url = getAsString(Url.URL_ADDRESS).orEmpty()
-        )
+    private fun ContentValues.toUrlOrNull(): Url? {
+        val type = getAsString(Url.URL_TYPE)?.trim().orEmpty()
+        val url = getAsString(Url.URL_ADDRESS)?.trim().orEmpty()
+        if (type.isEmpty() || url.isEmpty()) return null
+        return Url(type = type, url = url)
     }
 
     companion object {

@@ -13,7 +13,9 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.close.hook.ads.BuildConfig
 import com.close.hook.ads.R
 import com.close.hook.ads.databinding.FragmentHomeBinding
@@ -32,8 +34,10 @@ class HomeFragment : BaseFragment<FragmentHomeBinding>() {
         initToolBar()
         
         viewLifecycleOwner.lifecycleScope.launch {
-            ServiceManager.connectionState.collect { state ->
-                updateStatus(state is ConnectionState.Connected)
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ServiceManager.connectionState.collect { state ->
+                    updateStatus(state is ConnectionState.Connected)
+                }
             }
         }
 

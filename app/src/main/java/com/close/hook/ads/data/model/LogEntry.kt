@@ -11,5 +11,10 @@ data class LogEntry(
     val tag: String,
     val message: String,
     val packageName: String,
-    val stackTrace: String?
-) : Parcelable
+    val stackTrace: String?,
+    val hookScope: String? = null
+) : Parcelable {
+    companion object {
+        const val GLOBAL_HOOK_SCOPE = "global"
+    }
+}

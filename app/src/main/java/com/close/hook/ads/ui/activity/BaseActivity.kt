@@ -26,10 +26,6 @@ abstract class BaseActivity : MaterialThemeActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Skip the global slide overlay when this activity opts into shared-element
-        // transitions (e.g. MaterialContainerTransform) — they animate the close
-        // themselves and overlaying a slide would fight the morph.
-        if (window.sharedElementEnterTransition != null) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, R.anim.slide_in_scale, R.anim.slide_out_scale)
         } else {

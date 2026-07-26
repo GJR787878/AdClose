@@ -26,7 +26,7 @@ class RequestViewModel(application: Application) : AndroidViewModel(application)
         private const val MAX_REQUEST_LIST_SIZE = 1000
     }
 
-    val dataSource: DataSource = DataSource.getDataSource(application)
+    private val dataSource: DataSource = DataSource.getDataSource(application)
 
     private val _requestList = MutableStateFlow<List<RequestInfo>>(emptyList())
     val requestList: StateFlow<List<RequestInfo>> = _requestList.asStateFlow()
@@ -91,7 +91,7 @@ class RequestViewModel(application: Application) : AndroidViewModel(application)
         _requestList.value = emptyList()
     }
 
-    fun toggleBlockStatus(request: RequestInfo) = viewModelScope.launch(Dispatchers.IO) {
+    fun toggleBlockStatus(request: RequestInfo) = viewModelScope.launch {
         val requestType = request.blockType.takeUnless { it.isNullOrEmpty() } ?: run {
             if (request.appName.trim().endsWith("DNS", ignoreCase = true)) "Domain" else "URL"
         }

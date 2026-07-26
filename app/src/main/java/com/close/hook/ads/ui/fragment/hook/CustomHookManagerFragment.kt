@@ -28,6 +28,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.os.BundleCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.viewModels
@@ -62,6 +63,7 @@ import com.close.hook.ads.util.OnBackPressListener
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
@@ -83,6 +85,7 @@ class CustomHookManagerFragment : BaseFragment<FragmentCustomHookManagerBinding>
     private lateinit var footerSpaceDecoration: FooterSpaceItemDecoration
     private var tracker: SelectionTracker<CustomHookInfo>? = null
     private var currentActionMode: ActionMode? = null
+    private var isSelectionMode = false
     private var editingConfig: CustomHookInfo? = null
     private var isFabMenuOpen = false
     private lateinit var childFabs: List<View>
@@ -145,8 +148,6 @@ class CustomHookManagerFragment : BaseFragment<FragmentCustomHookManagerBinding>
 
     companion object {
         private const val ARG_PACKAGE_NAME = "packageName"
-        const val REQUEST_KEY_HOOK_CONFIG = "hook_config_request"
-        const val BUNDLE_KEY_HOOK_CONFIG = "hook_config_bundle"
 
         fun newInstance(packageName: String?) = CustomHookManagerFragment().apply {
             arguments = Bundle().apply { putString(ARG_PACKAGE_NAME, packageName) }
@@ -279,24 +280,27 @@ class CustomHookManagerFragment : BaseFragment<FragmentCustomHookManagerBinding>
 
     private fun loadAppInfoIntoHeader(packageName: String) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val appName = withContext(Dispatchers.IO) {
+            val appNameDeferred = async(Dispatchers.IO) {
                 runCatching { AppUtils.getAppName(requireContext(), packageName) }.getOrDefault(packageName)
             }
-            val appInfo = withContext(Dispatchers.IO) {
+            val appInfoDeferred = async(Dispatchers.IO) {
                 runCatching { requireContext().packageManager.getPackageInfo(packageName, 0) }.getOrNull()
             }
+            val iconDeferred = async(Dispatchers.IO) {
+                AppIconLoader.loadAndCompressIcon(
+                    requireContext(), packageName,
+                    AppIconLoader.calculateTargetIconSizePx(requireContext())
+                )
+            }
+            val appName = appNameDeferred.await()
+            val appInfo = appInfoDeferred.await()
+            val icon = iconDeferred.await()
             val versionName = appInfo?.versionName ?: "N/A"
             val versionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 appInfo?.longVersionCode ?: 0L
             } else {
                 @Suppress("DEPRECATION")
                 appInfo?.versionCode?.toLong() ?: 0L
-            }
-            val icon = withContext(Dispatchers.IO) {
-                AppIconLoader.loadAndCompressIcon(
-                    requireContext(), packageName,
-                    AppIconLoader.calculateTargetIconSizePx(requireContext())
-                )
             }
             binding.appHeaderInclude.apply {
                 appNameHeader.text = appName
@@ -331,32 +335,28 @@ class CustomHookManagerFragment : BaseFragment<FragmentCustomHookManagerBinding>
             adapter = hookAdapter
             footerSpaceDecoration = FooterSpaceItemDecoration(footerHeight = 80.dp)
             addItemDecoration(footerSpaceDecoration)
-            FastScrollerBuilder(this).useMd2Style().build()
-            addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-                val bottomNavHeight = (activity as? CustomHookActivity)?.bottomNavigationView?.height ?: 0
-                setPadding(paddingLeft, paddingTop, paddingRight, bottomNavHeight)
-                clipToPadding = false
-            }
-            addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                private var totalDy = 0
-                private val scrollThreshold = 20.dp
-                private val navContainer = activity as? INavContainer
-                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                    if (navContainer == null) return
-                    super.onScrolled(recyclerView, dx, dy)
-                    if (dy > 0) {
-                        totalDy += dy
-                        if (totalDy > scrollThreshold) { navContainer.hideNavigation(); totalDy = 0; if (isFabMenuOpen) closeFabMenu() }
-                    } else if (dy < 0) {
-                        totalDy += dy
-                        if (totalDy < -scrollThreshold) { navContainer.showNavigation(); totalDy = 0 }
-                    }
+            attachNavScrollListener()
+
+            val bottomNavigation = (activity as? CustomHookActivity)?.bottomNavigationView
+            if (bottomNavigation == null) {
+                FastScrollerBuilder(this).useMd2Style().build()
+            } else {
+                bottomNavigation.doOnLayout { navigation ->
+                    if (_binding == null) return@doOnLayout
+                    val bottomPadding = navigation.height
+                    setPadding(paddingLeft, paddingTop, paddingRight, bottomPadding)
+                    clipToPadding = false
+                    FastScrollerBuilder(this)
+                        .useMd2Style()
+                        .setPadding(0, 0, 0, bottomPadding)
+                        .build()
                 }
-            })
+            }
         }
     }
 
     private fun setupTracker() {
+        isSelectionMode = false
         tracker = SelectionTracker.Builder(
             "custom_hook_selection_id",
             binding.recyclerView,
@@ -369,6 +369,13 @@ class CustomHookManagerFragment : BaseFragment<FragmentCustomHookManagerBinding>
                 override fun onSelectionChanged() {
                     super.onSelectionChanged()
                     val selectedCount = it.selection.size()
+                    val selectionMode = selectedCount > 0
+                    if (selectionMode != isSelectionMode) {
+                        isSelectionMode = selectionMode
+                        if (hookAdapter.itemCount > 0) {
+                            hookAdapter.notifyItemRangeChanged(0, hookAdapter.itemCount)
+                        }
+                    }
                     if (selectedCount > 0) {
                         if (currentActionMode == null) {
                             currentActionMode = (activity as? AppCompatActivity)?.startSupportActionMode(actionModeCallback)
@@ -469,7 +476,16 @@ class CustomHookManagerFragment : BaseFragment<FragmentCustomHookManagerBinding>
     }
 
     private fun setupFabMenu() {
-        childFabs = listOf(binding.fabAutoDetectAds, binding.fabClipboardAutoDetect, binding.fabAddHook, binding.fabClearAllHooks)
+        val hasTargetPackage = viewModel.getTargetPackageName() != null
+        if (!hasTargetPackage) {
+            binding.fabAutoDetectAds.isVisible = false
+        }
+        childFabs = buildList {
+            if (hasTargetPackage) add(binding.fabAutoDetectAds)
+            add(binding.fabClipboardAutoDetect)
+            add(binding.fabAddHook)
+            add(binding.fabClearAllHooks)
+        }
         binding.scrim.setOnClickListener { closeFabMenu() }
         binding.fabMain.setOnClickListener { if (isFabMenuOpen) closeFabMenu() else openFabMenu() }
         val fabClickMap = mapOf(
@@ -601,8 +617,8 @@ class CustomHookManagerFragment : BaseFragment<FragmentCustomHookManagerBinding>
     }
 
     private fun setupFragmentResultListener() {
-        childFragmentManager.setFragmentResultListener(REQUEST_KEY_HOOK_CONFIG, viewLifecycleOwner) { _, bundle ->
-            BundleCompat.getParcelable(bundle, BUNDLE_KEY_HOOK_CONFIG, CustomHookInfo::class.java)?.let { newOrUpdatedConfig ->
+        childFragmentManager.setFragmentResultListener(CustomHookDialogFragment.REQUEST_KEY_HOOK_CONFIG, viewLifecycleOwner) { _, bundle ->
+            BundleCompat.getParcelable(bundle, CustomHookDialogFragment.BUNDLE_KEY_HOOK_CONFIG, CustomHookInfo::class.java)?.let { newOrUpdatedConfig ->
                 val isEditing = editingConfig != null
                 if (isEditing) viewModel.updateHook(editingConfig!!, newOrUpdatedConfig) else viewModel.addHook(newOrUpdatedConfig)
                 showSnackbar(getString(if (isEditing) R.string.hook_updated_successfully else R.string.hook_added_successfully))
@@ -747,7 +763,7 @@ class CustomHookManagerFragment : BaseFragment<FragmentCustomHookManagerBinding>
 
     override fun onDestroyView() {
         binding.editTextSearch.removeTextChangedListener(searchTextWatcher)
-        childFragmentManager.clearFragmentResultListener(REQUEST_KEY_HOOK_CONFIG)
+        childFragmentManager.clearFragmentResultListener(CustomHookDialogFragment.REQUEST_KEY_HOOK_CONFIG)
         super.onDestroyView()
     }
 }

@@ -104,11 +104,19 @@ class CustomHookAdapter(
                 if (bindingAdapterPosition != RecyclerView.NO_POSITION) onEditItem(getItem(bindingAdapterPosition))
             }
             binding.root.setOnLongClickListener {
-                onLongClickItem(getItem(bindingAdapterPosition))
-                true
+                val position = bindingAdapterPosition
+                if (position == RecyclerView.NO_POSITION) {
+                    false
+                } else {
+                    onLongClickItem(getItem(position))
+                    true
+                }
             }
             binding.root.setOnClickListener {
-                onClickItem(getItem(bindingAdapterPosition))
+                val position = bindingAdapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onClickItem(getItem(position))
+                }
             }
         }
 
@@ -192,7 +200,10 @@ class CustomHookAdapter(
         fun getItemDetails(): ItemDetailsLookup.ItemDetails<CustomHookInfo> =
             object : ItemDetailsLookup.ItemDetails<CustomHookInfo>() {
                 override fun getPosition(): Int = bindingAdapterPosition
-                override fun getSelectionKey(): CustomHookInfo? = getItem(bindingAdapterPosition)
+                override fun getSelectionKey(): CustomHookInfo? {
+                    val position = bindingAdapterPosition
+                    return if (position == RecyclerView.NO_POSITION) null else getItem(position)
+                }
             }
     }
 

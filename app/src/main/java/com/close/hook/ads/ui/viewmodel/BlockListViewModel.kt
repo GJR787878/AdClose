@@ -5,67 +5,51 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.close.hook.ads.data.DataSource
 import com.close.hook.ads.data.model.Url
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class BlockListViewModel(application: Application) : AndroidViewModel(application) {
 
-    val dataSource: DataSource = DataSource.getDataSource(application)
+    private val dataSource: DataSource = DataSource.getDataSource(application)
 
-    private val _blackListSearchQuery = MutableStateFlow("")
-    private val blackListSearchQuery: StateFlow<String> = _blackListSearchQuery.asStateFlow()
+    private val _searchQuery = MutableStateFlow("")
 
-    val blackList: StateFlow<List<Url>> = blackListSearchQuery
+    val blackList: StateFlow<List<Url>> = _searchQuery
         .debounce(300L)
         .flatMapLatest { dataSource.searchUrls(it) }
-        .flowOn(Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun setBlackListSearchQuery(query: String) {
-        _blackListSearchQuery.value = query
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
     }
 
-    fun addUrl(url: Url) = viewModelScope.launch(Dispatchers.IO) {
+    /** Returns true if added, false if the rule already exists. */
+    suspend fun addUrlIfAbsent(url: Url): Boolean {
+        if (dataSource.isExist(url.type, url.url)) return false
         dataSource.addUrl(url)
+        return true
     }
 
-    fun removeList(list: List<Url>) = viewModelScope.launch(Dispatchers.IO) {
-        dataSource.removeList(list)
-    }
+    fun updateUrl(url: Url) = viewModelScope.launch { dataSource.updateUrl(url) }
 
-    fun removeUrl(url: Url) = viewModelScope.launch(Dispatchers.IO) {
-        dataSource.removeUrl(url)
-    }
+    fun removeUrl(url: Url) = viewModelScope.launch { dataSource.removeUrl(url) }
 
-    fun removeAll() = viewModelScope.launch(Dispatchers.IO) {
-        dataSource.removeAll()
-    }
+    fun removeList(list: List<Url>) = viewModelScope.launch { dataSource.removeList(list) }
 
-    fun addListUrl(list: List<Url>) = viewModelScope.launch(Dispatchers.IO) {
-        dataSource.addListUrl(list)
-    }
+    fun removeAll() = viewModelScope.launch { dataSource.removeAll() }
 
-    fun updateUrl(url: Url) = viewModelScope.launch(Dispatchers.IO) {
-        dataSource.updateUrl(url)
-    }
+    suspend fun isExist(type: String, url: String): Boolean = dataSource.isExist(type, url)
 
-    fun removeUrlString(type: String, url: String) = viewModelScope.launch(Dispatchers.IO) {
-        dataSource.removeUrlString(type, url)
-    }
+    fun removeUrlString(type: String, url: String) =
+        viewModelScope.launch { dataSource.removeUrlString(type, url) }
 
-    suspend fun getAllUrls(): List<Url> = withContext(Dispatchers.IO) {
-        dataSource.getAllUrls()
-    }
+    fun addListUrl(list: List<Url>) = viewModelScope.launch { dataSource.addListUrl(list) }
 
-    suspend fun isExist(type: String, url: String): Boolean =
-        dataSource.isExist(type, url)
+    suspend fun getAllUrls(): List<Url> = dataSource.getAllUrls()
 }

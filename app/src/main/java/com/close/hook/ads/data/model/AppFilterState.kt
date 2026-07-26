@@ -1,7 +1,7 @@
 package com.close.hook.ads.data.model
 
 data class AppFilterState(
-    val appType: String,
+    val appType: String = "all",
     val filterOrder: Int,
     val isReverse: Boolean,
     val keyword: String,

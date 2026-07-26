@@ -21,14 +21,14 @@ class SimpleMemoryCache {
         }
     )
 
-    fun get(key: String): Pair<ByteArray, String>? {
-        val entry = cache[key] ?: return null
-        
+    fun get(key: String): Pair<ByteArray, String>? = synchronized(cache) {
+        val entry = cache[key] ?: return@synchronized null
         if (System.currentTimeMillis() - entry.timestamp > expirationTimeMillis) {
             cache.remove(key)
-            return null
+            null
+        } else {
+            entry.data
         }
-        return entry.data
     }
 
     fun put(key: String, value: Pair<ByteArray, String>) {
@@ -54,8 +54,6 @@ class SimpleMemoryCache {
                 val entry = iterator.next()
                 if (now - entry.value.timestamp > currentExpiration) {
                     iterator.remove()
-                } else {
-                    break 
                 }
             }
         }

@@ -318,16 +318,35 @@ object HookPrefs {
             Log.w(TAG, "Write skipped — service unavailable: $fileName")
             return false
         }
+        // Write to a temp file first, then overwrite the target so a mid-write
+        // crash leaves the previous file intact rather than a truncated one.
+        val tempName = "$fileName.tmp"
         return try {
+            service.openRemoteFile(tempName).use { pfd ->
+                FileOutputStream(pfd.fileDescriptor).use { fos ->
+                    fos.channel.truncate(0)
+                    fos.channel.position(0)
+                    fos.bufferedWriter(StandardCharsets.UTF_8).apply {
+                        write(content)
+                        flush()
+                    }
+                    fos.fd.sync()
+                }
+            }
+            // Overwrite target from the successfully written temp
+            val tempContent = readAllTextFromFile(tempName) ?: return false
             service.openRemoteFile(fileName).use { pfd ->
                 FileOutputStream(pfd.fileDescriptor).use { fos ->
                     fos.channel.truncate(0)
                     fos.channel.position(0)
-                    fos.bufferedWriter(StandardCharsets.UTF_8).use { writer ->
-                        writer.write(content)
+                    fos.bufferedWriter(StandardCharsets.UTF_8).apply {
+                        write(tempContent)
+                        flush()
                     }
+                    fos.fd.sync()
                 }
             }
+            service.deleteRemoteFile(tempName)
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to write text to file: $fileName", e)

@@ -98,30 +98,8 @@ class BlockListFragment : BaseSearchFragment<FragmentBlockListBinding>(), OnBack
                 clipToPadding = false
             }
 
-            addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                private var totalDy = 0
-                private val scrollThreshold = 20.dp
-
-                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                    super.onScrolled(recyclerView, dx, dy)
-                    val navContainer = activity as? INavContainer
-                    if (dy > 0) {
-                        totalDy += dy
-                        if (totalDy > scrollThreshold) {
-                            navContainer?.hideNavigation()
-                            totalDy = 0
-                        }
-                    } else if (dy < 0) {
-                        totalDy += dy
-                        if (totalDy < -scrollThreshold) {
-                            navContainer?.showNavigation()
-                            totalDy = 0
-                        }
-                    }
-                }
-            })
-
             addItemDecoration(footerSpaceDecoration)
+            attachNavScrollListener()
             FastScrollerBuilder(this).useMd2Style().build()
         }
     }
@@ -270,7 +248,7 @@ class BlockListFragment : BaseSearchFragment<FragmentBlockListBinding>(), OnBack
     private val textWatcher = object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
         override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-            viewModel.setBlackListSearchQuery(s.toString())
+            viewModel.setSearchQuery(s.toString())
         }
         override fun afterTextChanged(s: Editable) {
             binding.clear.isVisible = s.isNotBlank()
@@ -355,11 +333,9 @@ class BlockListFragment : BaseSearchFragment<FragmentBlockListBinding>(), OnBack
                 val newItem = Url(type = selectedType, url = newUrl).also { it.id = url?.id ?: 0L }
 
                 lifecycleScope.launch {
-                    val isExist = viewModel.isExist(selectedType, newUrl)
                     if (url == null) {
-                        if (!isExist) {
-                            viewModel.addUrl(newItem)
-                        } else {
+                        val added = viewModel.addUrlIfAbsent(newItem)
+                        if (!added) {
                             Toast.makeText(requireContext(), R.string.rule_exists, Toast.LENGTH_SHORT).show()
                         }
                     } else {
@@ -390,7 +366,7 @@ class BlockListFragment : BaseSearchFragment<FragmentBlockListBinding>(), OnBack
             uri?.let {
                 lifecycleScope.launch(Dispatchers.IO) {
                     runCatching {
-                        val currentList = viewModel.blackList.value
+                        val currentList = viewModel.getAllUrls()
 
                         val outputStream = requireContext().contentResolver.openOutputStream(uri)
                             ?: throw IOException("Failed to open output stream")

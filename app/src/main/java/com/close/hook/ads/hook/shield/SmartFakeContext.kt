@@ -14,11 +14,18 @@ import android.os.Handler
 import com.close.hook.ads.hook.util.LogProxy
 import java.io.File
 
-class SmartFakeContext(realApplicationContext: Context) : ContextWrapper(realApplicationContext) {
+class SmartFakeContext(
+    realApplicationContext: Context,
+    private val hookScope: String
+) : ContextWrapper(realApplicationContext) {
 
     private companion object {
         private const val TAG = "SmartFakeContext"
         private val AD_ACTIVITY_KEYWORDS = setOf("ad", "ads", "advert", "splash", "gdt", "tt", "csj", "ksad")
+    }
+
+    private fun log(message: String) {
+        LogProxy.log(TAG, message, hookScope = hookScope)
     }
 
     private inner class FakeResources(realRes: Resources) :
@@ -27,7 +34,7 @@ class SmartFakeContext(realApplicationContext: Context) : ContextWrapper(realApp
         override fun getIdentifier(name: String?, defType: String?, defPackage: String?): Int {
             val resourceName = name.orEmpty().lowercase()
             if (adResourceKeywords.any { resourceName.contains(it) }) {
-                LogProxy.log(TAG, "Blocked resource lookup: name=$name, type=$defType, package=$defPackage")
+                log("Blocked resource lookup: name=$name, type=$defType, package=$defPackage")
                 return 0
             }
             return super.getIdentifier(name, defType, defPackage)
@@ -37,7 +44,7 @@ class SmartFakeContext(realApplicationContext: Context) : ContextWrapper(realApp
     private val allFakePrefs = mutableMapOf<String, MutableMap<String, Any?>>()
     private val fakeResources by lazy { FakeResources(super.getResources()) }
     private val devNullFile by lazy {
-        LogProxy.log(TAG, "Redirecting all file operations to a '/dev/null' black hole.")
+        log("Redirecting all file operations to a '/dev/null' black hole.")
         File("/dev/null")
     }
 
@@ -52,7 +59,7 @@ class SmartFakeContext(realApplicationContext: Context) : ContextWrapper(realApp
             Context.WINDOW_SERVICE,
             Context.DOWNLOAD_SERVICE,
             Context.STORAGE_SERVICE -> {
-                LogProxy.log(TAG, "Blocked getSystemService for critical service: $name")
+                log("Blocked getSystemService for critical service: $name")
                 null
             }
             else -> super.getSystemService(name)
@@ -74,7 +81,7 @@ class SmartFakeContext(realApplicationContext: Context) : ContextWrapper(realApp
     override fun startActivity(intent: Intent) {
         val targetComponent = intent.component?.className.orEmpty().lowercase()
         if (AD_ACTIVITY_KEYWORDS.any { targetComponent.contains(it) }) {
-            LogProxy.log(TAG, "Blocked startActivity to a potential ad activity: $targetComponent")
+            log("Blocked startActivity to a potential ad activity: $targetComponent")
         } else {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             super.startActivity(intent)
@@ -82,7 +89,7 @@ class SmartFakeContext(realApplicationContext: Context) : ContextWrapper(realApp
     }
 
     private fun blockReceiverRegistration(receiver: BroadcastReceiver?, filter: IntentFilter?): Intent? {
-        LogProxy.log(TAG, "Blocked registerReceiver for receiver: $receiver with filter: $filter")
+        log("Blocked registerReceiver for receiver: $receiver with filter: $filter")
         return null
     }
 
@@ -107,7 +114,7 @@ class SmartFakeContext(realApplicationContext: Context) : ContextWrapper(realApp
     }
 
     override fun getSharedPreferences(name: String, mode: Int): SharedPreferences {
-        LogProxy.log(TAG, "Intercepted getSharedPreferences for '$name'. Providing an in-memory, non-persistent instance.")
+        log("Intercepted getSharedPreferences for '$name'. Providing an in-memory, non-persistent instance.")
         return FakeSharedPreferences(name, allFakePrefs)
     }
 

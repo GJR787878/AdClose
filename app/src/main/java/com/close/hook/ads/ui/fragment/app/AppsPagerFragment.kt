@@ -275,6 +275,14 @@ class AppsPagerFragment : BasePagerFragment(), IOnFabClickContainer {
         )
     }
 
+    fun showFabs() {
+        listOf(backupFab, restoreFab).forEach { fab ->
+            val behavior = (fab.layoutParams as? CoordinatorLayout.LayoutParams)?.behavior
+            @Suppress("UNCHECKED_CAST")
+            (behavior as? HideBottomViewOnScrollBehavior<FloatingActionButton>)?.slideUp(fab)
+        }
+    }
+
     fun setHint(totalApp: Int) {
         binding.editText.hint = if (totalApp != 0) {
             getString(R.string.search_hint_with_count, totalApp)

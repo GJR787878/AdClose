@@ -16,7 +16,10 @@ public class CacheDataManager {
     public static String getTotalCacheSize(Context context) throws Exception {
         long cacheSize = getFolderSize(context.getCacheDir());
         if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-            cacheSize += getFolderSize(context.getExternalCacheDir());
+            File externalCacheDir = context.getExternalCacheDir();
+            if (externalCacheDir != null) {
+                cacheSize += getFolderSize(externalCacheDir);
+            }
         }
         return getFormatSize(cacheSize);
     }
@@ -31,6 +34,9 @@ public class CacheDataManager {
      * @throws Exception
      */
     public static long getFolderSize(File file) throws Exception {
+        if (file == null || !file.exists()) {
+            return 0;
+        }
         long size = 0;
         try {
             File[] fileList = file.listFiles();
@@ -56,10 +62,11 @@ public class CacheDataManager {
      * @param size
      */
     public static String getFormatSize(long size) {
+        if (size < 1024) return size + "B";
         long kb = size / 1024;
-        int m = (int) (kb / 1024);
-        int kbs = (int) (kb % 1024);
-        return m + "." + kbs + "M";
+        if (kb < 1024) return kb + "KB";
+        float mb = kb / 1024f;
+        return String.format("%.1fMB", mb);
     }
 
     /**
@@ -70,12 +77,18 @@ public class CacheDataManager {
     public static void clearAllCache(Context context) {
         deleteDir(context.getCacheDir());
         if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-            deleteDir(context.getExternalCacheDir());
+            File externalCacheDir = context.getExternalCacheDir();
+            if (externalCacheDir != null) {
+                deleteDir(externalCacheDir);
+            }
         }
     }
 
     private static boolean deleteDir(File dir) {
-        if (dir != null && dir.isDirectory()) {
+        if (dir == null || !dir.exists()) {
+            return true;
+        }
+        if (dir.isDirectory()) {
             String[] children = dir.list();
             if (children != null) {
                 for (String child : children) {
@@ -86,7 +99,6 @@ public class CacheDataManager {
                 }
             }
         }
-        assert dir != null;
         return dir.delete();
     }
 

@@ -1,4 +1,4 @@
-package com.close.hook.ads.hook.util
+package com.close.hook.ads.util
 
 import java.io.InputStream
 import java.io.OutputStream

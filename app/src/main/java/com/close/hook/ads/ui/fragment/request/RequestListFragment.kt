@@ -123,6 +123,8 @@ class RequestListFragment : BaseFragment<FragmentRequestListBinding>(), OnClearC
             adapter = mAdapter
             layoutManager = LinearLayoutManager(requireContext())
             addItemDecoration(footerSpaceDecoration)
+            clipToPadding = false
+            attachNavScrollListener()
 
             (activity as? MainActivity)?.getBottomNavigationView()?.post {
                 val bottomNavHeight =
@@ -130,32 +132,6 @@ class RequestListFragment : BaseFragment<FragmentRequestListBinding>(), OnClearC
                 setPadding(paddingLeft, paddingTop, paddingRight, bottomNavHeight)
                 FastScrollerBuilder(this).useMd2Style().build()
             }
-
-            clipToPadding = false
-
-            addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                private var totalDy = 0
-                private val scrollThreshold = 20.dp
-
-                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                    super.onScrolled(recyclerView, dx, dy)
-                    val navContainer = activity as? INavContainer
-
-                    if (dy > 0) {
-                        totalDy += dy
-                        if (totalDy > scrollThreshold) {
-                            navContainer?.hideNavigation()
-                            totalDy = 0
-                        }
-                    } else if (dy < 0) {
-                        totalDy += dy
-                        if (totalDy < -scrollThreshold) {
-                            navContainer?.showNavigation()
-                            totalDy = 0
-                        }
-                    }
-                }
-            })
         }
     }
 
@@ -302,19 +278,14 @@ class RequestListFragment : BaseFragment<FragmentRequestListBinding>(), OnClearC
         val selectedList = tracker?.selection?.toList()
         if (selectedList.isNullOrEmpty()) return
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            selectedList.forEach { request ->
-                val requestType = request.blockType.takeUnless { it.isNullOrEmpty() } ?: run {
-                    if (request.appName.trim().endsWith("DNS", ignoreCase = true)) "Domain" else "URL"
-                }
-                val urlToRemove = request.url ?: request.request
-                blockListViewModel.removeUrlString(requestType, urlToRemove)
+        selectedList.forEach { request ->
+            val requestType = request.blockType.takeUnless { it.isNullOrEmpty() } ?: run {
+                if (request.appName.trim().endsWith("DNS", ignoreCase = true)) "Domain" else "URL"
             }
-            withContext(Dispatchers.Main) {
-                tracker?.clearSelection()
-                showSnackbar(getString(R.string.batch_remove_success))
-            }
+            blockListViewModel.removeUrlString(requestType, request.url ?: request.request)
         }
+        tracker?.clearSelection()
+        showSnackbar(getString(R.string.batch_remove_success))
     }
 
     private fun showSnackbar(message: String) {

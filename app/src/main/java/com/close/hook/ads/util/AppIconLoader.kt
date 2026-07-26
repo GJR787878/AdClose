@@ -34,7 +34,7 @@ object AppIconLoader {
     suspend fun loadAndCompressIcon(context: Context, packageName: String, targetSizePx: Int): Drawable? {
         iconCache[packageName]?.let { return it }
 
-        val mutex = loadingMutexes.getOrPut(packageName) { Mutex() }
+        val mutex = loadingMutexes.computeIfAbsent(packageName) { Mutex() }
 
         return try {
             mutex.withLock {
@@ -76,7 +76,7 @@ object AppIconLoader {
                 }
             }
         } finally {
-            loadingMutexes.remove(packageName)
+            loadingMutexes.remove(packageName, mutex)
         }
     }
 

@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.close.hook.ads.data.model.AppInfo
 import com.close.hook.ads.databinding.InstallsItemAppBinding
 import com.close.hook.ads.util.AppIconLoader
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 class AppsAdapter(
@@ -39,6 +40,7 @@ class AppsAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         private val targetSizePx by lazy { AppIconLoader.calculateTargetIconSizePx(binding.root.context) }
+        private var iconJob: Job? = null
 
         init {
             binding.root.setOnClickListener {
@@ -63,7 +65,8 @@ class AppsAdapter(
             val context = binding.root.context
             val packageName = appInfo.packageName
 
-            lifecycleOwner.lifecycleScope.launch {
+            iconJob?.cancel()
+            iconJob = lifecycleOwner.lifecycleScope.launch {
                 val icon = AppIconLoader.loadAndCompressIcon(context, packageName, targetSizePx)
                 if (binding.root.tag == appInfo) {
                     binding.appIcon.setImageDrawable(icon)
@@ -72,6 +75,8 @@ class AppsAdapter(
         }
 
         fun onRecycled() {
+            iconJob?.cancel()
+            iconJob = null
             binding.root.tag = null
         }
     }

@@ -152,9 +152,23 @@ class CustomHookDialogFragment : DialogFragment() {
         binding.etParameterTypes.doOnTextChanged { text, _, _, _ ->
             if (binding.llParameterReplacements.isVisible) {
                 val paramTypes = text?.toString()?.split(',')?.filter { it.isNotBlank() } ?: emptyList()
-                updateParameterReplacementFields(paramTypes, null)
+                updateParameterReplacementFields(paramTypes, collectCurrentReplacements())
             }
         }
+    }
+
+    private fun collectCurrentReplacements(): Map<Int, String> {
+        val result = mutableMapOf<Int, String>()
+        for (i in 0 until binding.llParameterReplacements.childCount) {
+            val view = binding.llParameterReplacements.getChildAt(i)
+            val switch = view.findViewById<MaterialSwitch>(R.id.parameter_switch)
+            if (switch?.isChecked == true) {
+                val til = view.findViewById<TextInputLayout>(R.id.til_parameter_replacement)
+                val value = til?.editText?.text?.toString()?.trim()
+                if (!value.isNullOrEmpty()) result[i] = value
+            }
+        }
+        return result
     }
 
     private fun updateParameterReplacementFields(

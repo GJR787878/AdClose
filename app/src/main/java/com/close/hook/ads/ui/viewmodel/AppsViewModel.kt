@@ -36,7 +36,6 @@ class AppsViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun createDefaultFilterState() = AppFilterState(
-        appType = "all",
         filterOrder = PrefManager.order,
         isReverse = PrefManager.isReverse,
         keyword = "",

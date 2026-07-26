@@ -29,16 +29,28 @@ object LogRepository {
 
     fun getLogsForPackage(packageName: String?): List<LogEntry> {
         synchronized(logCache) {
-            return if (packageName == null) {
-                ArrayList(logCache)
-            } else {
-                logCache.filter { it.packageName == packageName }
-            }
+            return logCache.filter { it.matchesHookScope(packageName) }
         }
     }
+
+    fun belongsToHookScope(entry: LogEntry, packageName: String?): Boolean =
+        entry.matchesHookScope(packageName)
+
+    private fun LogEntry.matchesHookScope(packageName: String?): Boolean =
+        if (packageName == null) {
+            hookScope == LogEntry.GLOBAL_HOOK_SCOPE
+        } else {
+            this.packageName == packageName && hookScope == packageName
+        }
 
     fun clearLogs() {
         synchronized(logCache) { logCache.clear() }
         _logFlow.tryEmit(emptyList())
+    }
+
+    fun clearLogsForPackage(packageName: String?) {
+        synchronized(logCache) {
+            logCache.removeAll { it.matchesHookScope(packageName) }
+        }
     }
 }

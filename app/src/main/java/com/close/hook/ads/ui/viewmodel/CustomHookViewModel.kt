@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.close.hook.ads.data.model.CustomHookInfo
 import com.close.hook.ads.data.repository.CustomHookRepository
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -131,11 +132,37 @@ class CustomHookViewModel(
             setPackage(packageName)
         }
         getApplication<Application>().sendBroadcast(intent)
+
+        // Manager-process fallback for Xiaomi / OPPO / vivo: the hook-side scan
+        // gets killed when the target app is backgrounded, so its push to the
+        // provider never arrives. Run the same DexKit scan against the target's
+        // APK locally as a backstop. Wait 5s first to let the hook-side path win
+        // on healthy ROMs (Pixel etc.), where it's both faster and aware of
+        // dynamically loaded plugins.
+        fallbackScanJob?.cancel()
+        fallbackScanJob = viewModelScope.launch {
+            delay(FALLBACK_DELAY_MS)
+            if (!isWaitingForScanResult) return@launch
+            val hooks = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                com.close.hook.ads.hook.util.AppApkScanner.scan(getApplication(), packageName)
+            }
+            if (isWaitingForScanResult) {
+                CustomHookRepository.publishAutoDetectResult(hooks)
+            }
+        }
     }
+
+    private var fallbackScanJob: Job? = null
 
     fun clearAutoDetectHooksResult() {
         _autoDetectedHooksResult.value = null
         CustomHookRepository.clearAutoDetectResult()
+        fallbackScanJob?.cancel()
+        fallbackScanJob = null
+    }
+
+    private companion object {
+        private const val FALLBACK_DELAY_MS = 5_000L
     }
 
     fun addHook(hookConfig: CustomHookInfo) {
@@ -273,7 +300,8 @@ class CustomHookViewModel(
         super.onCleared()
         saveJob?.let { job ->
             if (job.isActive) {
-                runBlocking {
+                @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+                GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                     repository.saveHookConfigs(currentPackageName, _hookConfigs.value)
                 }
             }

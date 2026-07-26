@@ -79,9 +79,6 @@ object ClipboardHookParser {
         if (fieldMatcher.matches()) {
             val className = fieldMatcher.group(1)?.replace('/', '.') ?: ""
             val fieldName = fieldMatcher.group(2) ?: ""
-            val fieldTypeDalvik = fieldMatcher.group(3) ?: ""
-            val fieldValue = dalvikTypeToJavaType(fieldTypeDalvik)
-
             val hook = CustomHookInfo(
                 className = className,
                 fieldName = fieldName,
@@ -144,9 +141,4 @@ object ClipboardHookParser {
         }
     }
 
-    private fun dalvikTypeToJavaType(dalvikType: String): String? {
-        if (dalvikType.isBlank()) return null
-        val (javaType, _) = parseSingleDalvikType(dalvikType, 0)
-        return javaType
-    }
 }

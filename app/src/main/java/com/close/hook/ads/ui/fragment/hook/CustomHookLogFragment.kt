@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.MenuProvider
+import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.viewModels
@@ -189,30 +190,23 @@ class CustomHookLogFragment : BaseFragment<FragmentCustomHookLogBinding>(), OnBa
         binding.recyclerViewLogs.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = logAdapter
-            FastScrollerBuilder(this).useMd2Style().build()
+            attachNavScrollListener()
 
-            addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-                val bottomNavHeight = (activity as? CustomHookActivity)?.bottomNavigationView?.height ?: 0
-                setPadding(paddingLeft, paddingTop, paddingRight, bottomNavHeight)
-                clipToPadding = false
-            }
-
-            addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                private var totalDy = 0
-                private val scrollThreshold = 20.dp
-                private val navContainer = activity as? INavContainer
-                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-                    navContainer?.let {
-                        if (dy > 0) {
-                            totalDy += dy
-                            if (totalDy > scrollThreshold) it.hideNavigation().also { totalDy = 0 }
-                        } else if (dy < 0) {
-                            totalDy += dy
-                            if (totalDy < -scrollThreshold) it.showNavigation().also { totalDy = 0 }
-                        }
-                    }
+            val bottomNavigation = (activity as? CustomHookActivity)?.bottomNavigationView
+            if (bottomNavigation == null) {
+                FastScrollerBuilder(this).useMd2Style().build()
+            } else {
+                bottomNavigation.doOnLayout { navigation ->
+                    if (_binding == null) return@doOnLayout
+                    val bottomPadding = navigation.height
+                    setPadding(paddingLeft, paddingTop, paddingRight, bottomPadding)
+                    clipToPadding = false
+                    FastScrollerBuilder(this)
+                        .useMd2Style()
+                        .setPadding(0, 0, 0, bottomPadding)
+                        .build()
                 }
-            })
+            }
         }
     }
 
@@ -261,8 +255,7 @@ class CustomHookLogFragment : BaseFragment<FragmentCustomHookLogBinding>(), OnBa
     }
 
     private fun formatLogEntry(logEntry: LogEntry): String {
-        val dateFormat = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
-        return "[${dateFormat.format(Date(logEntry.timestamp))}] [${logEntry.tag}] ${logEntry.message}"
+        return "[${LOG_TIME_FORMAT.format(Date(logEntry.timestamp))}] [${logEntry.tag}] ${logEntry.message}"
     }
 
     private fun copyToClipboard(label: String, text: String) {
@@ -284,6 +277,8 @@ class CustomHookLogFragment : BaseFragment<FragmentCustomHookLogBinding>(), OnBa
 
     companion object {
         private const val ARG_PACKAGE_NAME = "packageName"
+        private val LOG_TIME_FORMAT = SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault())
+
         fun newInstance(packageName: String?): CustomHookLogFragment =
             CustomHookLogFragment().apply {
                 arguments = Bundle().apply { putString(ARG_PACKAGE_NAME, packageName) }
