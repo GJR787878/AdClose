@@ -43,7 +43,7 @@ object RequestHook {
         0L, TimeUnit.MILLISECONDS,
         LinkedBlockingQueue(500),
         { runnable -> Thread(runnable, "AdClose-AsyncBroadcast").apply { isDaemon = true } },
-        ThreadPoolExecutor.CallerRunsPolicy()
+        ThreadPoolExecutor.DiscardOldestPolicy()
     )
 
     private val cachedAppLabel: String by lazy {
@@ -76,27 +76,27 @@ object RequestHook {
 
     internal val requestBuffers = CacheBuilder.newBuilder()
         .expireAfterAccess(3, TimeUnit.MINUTES)
-        .build<Int, ByteArrayOutputStream>()
+        .build<Any, ByteArrayOutputStream>()
         .asMap()
 
     internal val responseBuffers = CacheBuilder.newBuilder()
         .expireAfterAccess(3, TimeUnit.MINUTES)
-        .build<Int, ByteArrayOutputStream>()
+        .build<Any, ByteArrayOutputStream>()
         .asMap()
 
     internal val pendingRequests = CacheBuilder.newBuilder()
         .expireAfterAccess(3, TimeUnit.MINUTES)
-        .build<Int, BlockedRequest>()
+        .build<Any, BlockedRequest>()
         .asMap()
 
     private val requestParsingStates = CacheBuilder.newBuilder()
         .expireAfterAccess(3, TimeUnit.MINUTES)
-        .build<Int, ParsingState>()
+        .build<Any, ParsingState>()
         .asMap()
 
     private val responseParsingStates = CacheBuilder.newBuilder()
         .expireAfterAccess(3, TimeUnit.MINUTES)
-        .build<Int, ParsingState>()
+        .build<Any, ParsingState>()
         .asMap()
 
     private data class ParsingState(
@@ -198,7 +198,7 @@ object RequestHook {
         return checkShouldBlockRequest(info)
     }
 
-    internal fun processRequestBuffer(key: Int, isHttps: Boolean): Boolean {
+    internal fun processRequestBuffer(key: Any, isHttps: Boolean): Boolean {
         try {
             val state = requestParsingStates.computeIfAbsent(key) { ParsingState() }
 
@@ -276,7 +276,7 @@ object RequestHook {
         return false
     }
 
-    internal fun processResponseBuffer(key: Int, param: XC_MethodHook.MethodHookParam?): Boolean {
+    internal fun processResponseBuffer(key: Any, param: XC_MethodHook.MethodHookParam?): Boolean {
         try {
             val state = responseParsingStates.computeIfAbsent(key) { ParsingState() }
 
@@ -419,7 +419,7 @@ object RequestHook {
     }
 
     private fun completeAndDispatchRequest(
-        key: Int,
+        key: Any,
         requestInfo: BlockedRequest,
         headers: String,
         body: ByteArray?,

@@ -7,7 +7,6 @@ import com.google.common.cache.CacheBuilder
 import de.robv.android.xposed.XposedBridge
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
-import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.TimeUnit
 
 object NativeRequestHook {
@@ -25,10 +24,14 @@ object NativeRequestHook {
     private val h2RequestBuffers = CacheBuilder.newBuilder()
         .expireAfterAccess(3, TimeUnit.MINUTES)
         .build<String, ByteArrayOutputStream>()
-    
+
     private val h2ResponseBuffers = CacheBuilder.newBuilder()
         .expireAfterAccess(3, TimeUnit.MINUTES)
         .build<String, ByteArrayOutputStream>()
+
+    private val h2OverflowedStreams = CacheBuilder.newBuilder()
+        .expireAfterAccess(3, TimeUnit.MINUTES)
+        .build<String, Boolean>()
 
     fun init(enableNativeHook: Boolean) {
         if (isInitialized) return
@@ -73,7 +76,7 @@ object NativeRequestHook {
         var shouldBlock = false
 
         val buffers = if (isWrite) RequestHook.requestBuffers else RequestHook.responseBuffers
-        val buffer = (buffers as ConcurrentMap<Int, ByteArrayOutputStream>).computeIfAbsent(key) { ByteArrayOutputStream() }
+        val buffer = buffers.computeIfAbsent(key) { ByteArrayOutputStream() }
 
         try {
             synchronized(buffer) {
@@ -115,7 +118,7 @@ object NativeRequestHook {
     private fun processTcpData(fd: Int, isWrite: Boolean, data: ByteArray, address: String?, stack: String?): Boolean {
         var shouldBlock = false
         val buffers = if (isWrite) RequestHook.requestBuffers else RequestHook.responseBuffers
-        val buffer = (buffers as ConcurrentMap<Int, ByteArrayOutputStream>).computeIfAbsent(fd) { ByteArrayOutputStream() }
+        val buffer = buffers.computeIfAbsent(fd) { ByteArrayOutputStream() }
 
         try {
             synchronized(buffer) {
@@ -160,16 +163,22 @@ object NativeRequestHook {
         if (!isWrite && !getCollectResponseBody()) return
 
         val key = "${connId}_$streamId"
+        val overflowKey = "$key:${if (isWrite) "request" else "response"}"
+        if (h2OverflowedStreams.getIfPresent(overflowKey) != null) return
+
         val dup = buffer.duplicate()
         val data = ByteArray(dup.remaining())
         dup.get(data)
 
         val buffers = if (isWrite) h2RequestBuffers else h2ResponseBuffers
         val stream = buffers.get(key) { ByteArrayOutputStream() }
-        
+
         synchronized(stream) {
             if (stream.size() + data.size <= MAX_BUFFER_SIZE) {
                 stream.write(data)
+            } else {
+                stream.reset()
+                h2OverflowedStreams.put(overflowKey, true)
             }
         }
     }
@@ -203,8 +212,22 @@ object NativeRequestHook {
         val mimeType = if (!contentEncoding.isNullOrEmpty()) "$contentType; encoding=$contentEncoding" else contentType
 
         val key = "${connId}_$streamId"
-        val reqBody = if (isComplete) h2RequestBuffers.asMap().remove(key)?.toByteArray() else null
-        val respBody = if (isComplete) h2ResponseBuffers.asMap().remove(key)?.toByteArray() else null
+        val requestOverflowKey = "$key:request"
+        val responseOverflowKey = "$key:response"
+        val reqBody = if (isComplete) {
+            h2RequestBuffers.asMap().remove(key)
+                ?.takeIf { h2OverflowedStreams.getIfPresent(requestOverflowKey) == null }
+                ?.toByteArray()
+        } else null
+        val respBody = if (isComplete) {
+            h2ResponseBuffers.asMap().remove(key)
+                ?.takeIf { h2OverflowedStreams.getIfPresent(responseOverflowKey) == null }
+                ?.toByteArray()
+        } else null
+        if (isComplete) {
+            h2OverflowedStreams.invalidate(requestOverflowKey)
+            h2OverflowedStreams.invalidate(responseOverflowKey)
+        }
 
         val info = BlockedRequest(
             requestType     = " H2",
