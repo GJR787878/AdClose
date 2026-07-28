@@ -1,11 +1,15 @@
 package com.close.hook.ads.hook.util
 
-import de.robv.android.xposed.XposedBridge
-import org.luckypray.dexkit.result.MethodData
+import java.lang.reflect.Method
 
 object StringFinderKit {
 
-    fun findMethodsWithString(key: String, searchString: String, methodName: String): List<MethodData>? {
+    fun findMethodsWithString(
+        key: String,
+        searchString: String,
+        methodName: String,
+        classLoader: ClassLoader
+    ): List<Method> {
         return DexKitUtil.withBridge { bridge ->
             DexKitUtil.getCachedOrFindMethods(key) {
                 bridge.findMethod {
@@ -14,7 +18,11 @@ object StringFinderKit {
                         name = methodName
                     }
                 }
+            }.mapNotNull { methodData ->
+                runCatching {
+                    methodData.getMethodInstance(classLoader)
+                }.getOrNull()
             }
-        }
+        }.orEmpty()
     }
 }

@@ -70,14 +70,18 @@ object DexKitUtil {
     fun getCachedOrFindMethods(key: String, findLogic: () -> List<MethodData>?): List<MethodData> {
         return try {
             val start = if (ENABLE_DEBUG_LOG) System.nanoTime() else 0L
-            
-            methodCache.get(key) {
+
+            val result = methodCache.get(key) {
                 findLogic().orEmpty().also {
                     if (ENABLE_DEBUG_LOG) {
                         log("Cache miss for '$key'. Found ${it.size}, took %.2fms", (System.nanoTime() - start) / 1_000_000.0)
                     }
                 }
             }
+            // Dynamic feature/plugin DEX may be loaded later. Do not retain a
+            // negative result that would hide newly available methods.
+            if (result.isEmpty()) methodCache.invalidate(key)
+            result
         } catch (e: Exception) {
             XposedBridge.log("DexKitUtil: Error in cache get for $key: ${e.message}")
             emptyList()
@@ -143,10 +147,13 @@ object DexKitUtil {
                     } else {
                         it.close()
                     }
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     XposedBridge.log("DexKitUtil: Error closing bridge: ${e.message}")
                 }
                 bridge = null
+                // MethodData may retain native bridge-backed state. Never let
+                // cached results outlive the bridge that created them.
+                methodCache.invalidateAll()
             }
             releaseJob = null
         }

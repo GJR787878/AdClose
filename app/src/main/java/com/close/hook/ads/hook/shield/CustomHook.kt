@@ -123,12 +123,15 @@ object CustomHook {
         val searchString = config.searchStrings?.firstOrNull() ?: return
         val methodName = config.methodNames?.firstOrNull() ?: return
 
-        StringFinderKit.findMethodsWithString(config.id, searchString, methodName)?.forEach { methodData ->
-            methodData.getMethodInstance(classLoader)?.let { method ->
-                HookUtil.hookMethod(method, config.hookPoint) { param ->
-                    param.result = returnValue
-                    log(config, "findMethodsWithString - ID=${config.id}, Found=$method", HookUtil.getFormattedStackTrace())
-                }
+        StringFinderKit.findMethodsWithString(
+            config.id,
+            searchString,
+            methodName,
+            classLoader
+        ).forEach { method ->
+            HookUtil.hookMethod(method, config.hookPoint) { param ->
+                param.result = returnValue
+                log(config, "findMethodsWithString - ID=${config.id}, Found=$method", HookUtil.getFormattedStackTrace())
             }
         }
     }
