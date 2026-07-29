@@ -323,7 +323,7 @@
     <string name="subscription_name_hint">Name (optional)</string>
     <string name="subscription_interval_hint">Refresh interval</string>
     <string name="subscription_url_required">Subscription URL is required</string>
-    <string name="subscription_empty">No subscriptions yet.\nTap + to add one.</string>
+    <string name="subscription_empty">No subscriptions yet</string>
     <string name="subscription_add">Add subscription</string>
     <string name="subscription_refresh">Refresh now</string>
     <string name="subscription_refresh_enqueued">Refresh enqueued</string>
@@ -333,6 +333,7 @@
     <string name="subscription_author">Author: %1$s</string>
     <string name="subscription_unknown_author">Unknown</string>
     <string name="subscription_never_updated">Never updated</string>
+    <string name="subscription_just_now">Just now</string>
     <string name="subscription_status">%1$d rules · %2$s</string>
     <string-array name="subscription_intervals">
         <item>15 minutes</item>

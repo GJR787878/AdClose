@@ -54,7 +54,16 @@ class SubscriptionAdapter(
         private fun buildStatusText(source: SubscriptionSource): String {
             val ctx = binding.root.context
             val updated = if (source.lastSuccessAt > 0) {
-                DateUtils.getRelativeTimeSpanString(source.lastSuccessAt).toString()
+                val diff = System.currentTimeMillis() - source.lastSuccessAt
+                if (diff < DateUtils.MINUTE_IN_MILLIS) {
+                    ctx.getString(com.close.hook.ads.R.string.subscription_just_now)
+                } else {
+                    DateUtils.getRelativeTimeSpanString(
+                        source.lastSuccessAt,
+                        System.currentTimeMillis(),
+                        DateUtils.MINUTE_IN_MILLIS
+                    ).toString()
+                }
             } else {
                 ctx.getString(com.close.hook.ads.R.string.subscription_never_updated)
             }

@@ -2,6 +2,8 @@ package com.close.hook.ads.data.repository
 
 import com.close.hook.ads.data.model.SubscriptionSource
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -31,9 +33,7 @@ internal object SubscriptionFetcher {
             when (connection.responseCode) {
                 HttpURLConnection.HTTP_NOT_MODIFIED -> Result.NotModified
                 in 200..299 -> {
-                    val bytes = connection.inputStream.use { stream ->
-                        stream.readBytesLimited(MAX_RESPONSE_BYTES)
-                    }
+                    val bytes = connection.inputStream.use { it.readBytesLimited(MAX_RESPONSE_BYTES) }
                     Result.Content(
                         ByteArrayInputStream(bytes),
                         connection.getHeaderField("ETag"),
@@ -46,16 +46,16 @@ internal object SubscriptionFetcher {
             connection.disconnect()
         }
     }
+}
 
-    private fun java.io.InputStream.readBytesLimited(limit: Int): ByteArray {
-        val output = java.io.ByteArrayOutputStream()
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        while (true) {
-            val read = read(buffer)
-            if (read < 0) break
-            if (output.size() + read > limit) throw IllegalArgumentException("Subscription exceeds ${limit / 1024 / 1024} MiB")
-            output.write(buffer, 0, read)
-        }
-        return output.toByteArray()
+private fun InputStream.readBytesLimited(limit: Int): ByteArray {
+    val output = ByteArrayOutputStream()
+    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+    while (true) {
+        val read = read(buffer)
+        if (read < 0) break
+        if (output.size() + read > limit) throw IllegalArgumentException("Subscription exceeds ${limit / 1024 / 1024} MiB")
+        output.write(buffer, 0, read)
     }
+    return output.toByteArray()
 }

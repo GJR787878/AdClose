@@ -310,7 +310,7 @@
     <string name="subscription_name_hint">名称（可选）</string>
     <string name="subscription_interval_hint">刷新周期</string>
     <string name="subscription_url_required">订阅链接不能为空</string>
-    <string name="subscription_empty">暂无订阅。\n点击 + 添加一个。</string>
+    <string name="subscription_empty">暂无订阅</string>
     <string name="subscription_add">添加订阅</string>
     <string name="subscription_refresh">立即更新</string>
     <string name="subscription_refresh_enqueued">已加入更新队列</string>
@@ -320,6 +320,7 @@
     <string name="subscription_author">作者：%1$s</string>
     <string name="subscription_unknown_author">未知</string>
     <string name="subscription_never_updated">从未更新</string>
+    <string name="subscription_just_now">刚刚</string>
     <string name="subscription_status">%1$d 条规则 · %2$s</string>
     <string-array name="subscription_intervals">
         <item>15 分钟</item>

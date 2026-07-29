@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.close.hook.ads.ui.fragment.block
 
 import android.os.Bundle
@@ -142,7 +143,7 @@ class SubscriptionRuleFragment : BaseFragment<FragmentSubscriptionRuleBinding>()
                     Toast.makeText(requireContext(), R.string.subscription_url_required, Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                if (isEdit && source != null) {
+                if (source != null) {
                     viewModel.updateSource(source.copy(url = url, name = name, refreshIntervalMinutes = selectedInterval))
                 } else {
                     viewModel.addSource(url, name, selectedInterval)

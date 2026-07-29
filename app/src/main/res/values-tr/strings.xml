@@ -321,7 +321,7 @@
     <string name="subscription_name_hint">Ad (isteğe bağlı)</string>
     <string name="subscription_interval_hint">Güncelleme aralığı</string>
     <string name="subscription_url_required">Abonelik URL\'si boş olamaz</string>
-    <string name="subscription_empty">Henüz abonelik yok.\n+ düğmesine dokunarak ekleyin.</string>
+    <string name="subscription_empty">Henüz abonelik yok</string>
     <string name="subscription_add">Abonelik ekle</string>
     <string name="subscription_refresh">Şimdi güncelle</string>
     <string name="subscription_refresh_enqueued">Güncelleme kuyruğa alındı</string>
@@ -331,6 +331,7 @@
     <string name="subscription_author">Yazar: %1$s</string>
     <string name="subscription_unknown_author">Bilinmiyor</string>
     <string name="subscription_never_updated">Hiç güncellenmedi</string>
+    <string name="subscription_just_now">Az önce</string>
     <string name="subscription_status">%1$d kural · %2$s</string>
     <string-array name="subscription_intervals">
         <item>15 dakika</item>

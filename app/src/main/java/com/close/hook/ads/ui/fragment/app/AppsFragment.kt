@@ -552,7 +552,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
                     runCatching {
                         val service =
                             ServiceManager.service ?: throw IOException("Service not available.")
-                        val remoteFiles = service.listRemoteFiles() ?: emptyArray()
+                        val remoteFiles = service.listRemoteFiles()
 
                         val filesToZip = remoteFiles.filter {
                             it == PREFS_FILE_NAME || it.startsWith(CUSTOM_HOOKS_PREFIX)
@@ -566,7 +566,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
                             ?.use { outputStream ->
                                 ZipOutputStream(outputStream).use { zos ->
                                     filesToZip.forEach { fileName ->
-                                        service.openRemoteFile(fileName)?.use { pfd ->
+                                        service.openRemoteFile(fileName).use { pfd ->
                                             FileInputStream(pfd.fileDescriptor).use { fis ->
                                                 zos.putNextEntry(ZipEntry(fileName))
                                                 fis.copyTo(zos)
@@ -660,13 +660,13 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
         if (content.isBlank()) throw IOException("Backup file is empty.")
 
         val bytes = content.toByteArray(Charsets.UTF_8)
-        service.openRemoteFile(fileName)?.use { pfd ->
+        service.openRemoteFile(fileName).use { pfd ->
             FileOutputStream(pfd.fileDescriptor).use { fos ->
                 fos.channel.truncate(0)
                 fos.write(bytes)
                 fos.fd.sync()
             }
-        } ?: throw IOException("Could not open remote file for writing: $fileName")
+        }
     }
 
     private fun handleZipRestore(inputStream: InputStream) {
@@ -677,7 +677,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding>(), AppsAdapter.OnItemClic
                 val fileName = zipEntry.name
                 if (fileName == PREFS_FILE_NAME || fileName.startsWith(CUSTOM_HOOKS_PREFIX)) {
                     val bytes = zis.readBytes()
-                    service.openRemoteFile(fileName)?.use { pfd ->
+                    service.openRemoteFile(fileName).use { pfd ->
                         FileOutputStream(pfd.fileDescriptor).use { fos ->
                             fos.channel.truncate(0)
                             fos.write(bytes)

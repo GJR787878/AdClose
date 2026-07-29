@@ -11,7 +11,8 @@ public class DisableShakeAd {
         HookUtil.hookAllMethods(SensorManager.class, "registerListener", "before", param -> {
             if (param.args != null && param.args.length >= 2 && param.args[1] instanceof Sensor) {
                 Sensor sensor = (Sensor) param.args[1];
-                if (sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                if (sensor.getType() == Sensor.TYPE_ACCELEROMETER
+                        || sensor.getType() == Sensor.TYPE_GYROSCOPE) {
                     param.setResult(true);
                 }
             }
