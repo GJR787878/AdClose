@@ -5,11 +5,11 @@
     android:layout_height="match_parent">
 
     <com.google.android.material.appbar.AppBarLayout
-        android:fitsSystemWindows="true"
         android:id="@+id/appBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@null">
+        android:background="@null"
+        android:fitsSystemWindows="false">
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolBar"

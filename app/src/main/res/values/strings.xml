@@ -312,4 +312,36 @@
     <string name="status_icon">Status indicator</string>
     <string name="close">Close</string>
     <string name="response_body_image">Response body image</string>
+
+    <string name="tab_local_rules">Local Rules</string>
+    <string name="tab_subscription_rules">Subscriptions</string>
+    <string name="subscription_add_title">Add Subscription</string>
+    <string name="subscription_edit_title">Edit Subscription</string>
+    <string name="subscription_delete_title">Delete Subscription?</string>
+    <string name="subscription_delete_message">Delete subscription \"%1$s\"?</string>
+    <string name="subscription_url_hint">Subscription URL (http/https)</string>
+    <string name="subscription_name_hint">Name (optional)</string>
+    <string name="subscription_interval_hint">Refresh interval</string>
+    <string name="subscription_url_required">Subscription URL is required</string>
+    <string name="subscription_empty">No subscriptions yet.\nTap + to add one.</string>
+    <string name="subscription_add">Add subscription</string>
+    <string name="subscription_refresh">Refresh now</string>
+    <string name="subscription_refresh_enqueued">Refresh enqueued</string>
+    <string name="subscription_rule_count">%1$d rules</string>
+    <string name="subscription_more_actions">More actions</string>
+    <string name="subscription_url_helper">https:// or http://</string>
+    <string name="subscription_author">Author: %1$s</string>
+    <string name="subscription_unknown_author">Unknown</string>
+    <string name="subscription_never_updated">Never updated</string>
+    <string name="subscription_status">%1$d rules · %2$s</string>
+    <string-array name="subscription_intervals">
+        <item>15 minutes</item>
+        <item>1 hour</item>
+        <item>6 hours</item>
+        <item>12 hours</item>
+        <item>24 hours (default)</item>
+        <item>3 days</item>
+        <item>7 days</item>
+        <item>30 days</item>
+    </string-array>
 </resources>

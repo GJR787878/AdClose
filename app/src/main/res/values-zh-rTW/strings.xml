@@ -298,4 +298,36 @@
     <string name="theme_color_dynamic">桌布</string>
     <string name="theme_color_summary_dynamic">主題色跟隨系統桌布</string>
     <string name="theme_color_summary_custom">手動配色：%s</string>
+
+    <string name="tab_local_rules">本地規則</string>
+    <string name="tab_subscription_rules">訂閱規則</string>
+    <string name="subscription_add_title">新增訂閱</string>
+    <string name="subscription_edit_title">編輯訂閱</string>
+    <string name="subscription_delete_title">刪除訂閱？</string>
+    <string name="subscription_delete_message">刪除訂閱「%1$s」？</string>
+    <string name="subscription_url_hint">訂閱連結（http/https）</string>
+    <string name="subscription_name_hint">名稱（選填）</string>
+    <string name="subscription_interval_hint">更新週期</string>
+    <string name="subscription_url_required">訂閱連結不能為空</string>
+    <string name="subscription_empty">尚無訂閱。\n點擊 + 新增一個。</string>
+    <string name="subscription_add">新增訂閱</string>
+    <string name="subscription_refresh">立即更新</string>
+    <string name="subscription_refresh_enqueued">已加入更新佇列</string>
+    <string name="subscription_rule_count">%1$d 條規則</string>
+    <string name="subscription_more_actions">更多操作</string>
+    <string name="subscription_url_helper">https:// 或 http://</string>
+    <string name="subscription_author">作者：%1$s</string>
+    <string name="subscription_unknown_author">未知</string>
+    <string name="subscription_never_updated">從未更新</string>
+    <string name="subscription_status">%1$d 條規則 · %2$s</string>
+    <string-array name="subscription_intervals">
+        <item>15 分鐘</item>
+        <item>1 小時</item>
+        <item>6 小時</item>
+        <item>12 小時</item>
+        <item>24 小時（預設）</item>
+        <item>3 天</item>
+        <item>7 天</item>
+        <item>30 天</item>
+    </string-array>
 </resources>

@@ -310,4 +310,36 @@
     <string name="theme_color_dynamic">Duvar Kağıdı</string>
     <string name="theme_color_summary_dynamic">Tema rengi sistem duvar kağıdını takip eder</string>
     <string name="theme_color_summary_custom">El ile renk: %s</string>
+
+    <string name="tab_local_rules">Yerel Kurallar</string>
+    <string name="tab_subscription_rules">Abonelikler</string>
+    <string name="subscription_add_title">Abonelik Ekle</string>
+    <string name="subscription_edit_title">Aboneliği Düzenle</string>
+    <string name="subscription_delete_title">Abonelik Silinsin mi?</string>
+    <string name="subscription_delete_message">"%1$s" aboneliği silinsin mi?</string>
+    <string name="subscription_url_hint">Abonelik URL\'si (http/https)</string>
+    <string name="subscription_name_hint">Ad (isteğe bağlı)</string>
+    <string name="subscription_interval_hint">Güncelleme aralığı</string>
+    <string name="subscription_url_required">Abonelik URL\'si boş olamaz</string>
+    <string name="subscription_empty">Henüz abonelik yok.\n+ düğmesine dokunarak ekleyin.</string>
+    <string name="subscription_add">Abonelik ekle</string>
+    <string name="subscription_refresh">Şimdi güncelle</string>
+    <string name="subscription_refresh_enqueued">Güncelleme kuyruğa alındı</string>
+    <string name="subscription_rule_count">%1$d kural</string>
+    <string name="subscription_more_actions">Diğer işlemler</string>
+    <string name="subscription_url_helper">https:// veya http://</string>
+    <string name="subscription_author">Yazar: %1$s</string>
+    <string name="subscription_unknown_author">Bilinmiyor</string>
+    <string name="subscription_never_updated">Hiç güncellenmedi</string>
+    <string name="subscription_status">%1$d kural · %2$s</string>
+    <string-array name="subscription_intervals">
+        <item>15 dakika</item>
+        <item>1 saat</item>
+        <item>6 saat</item>
+        <item>12 saat</item>
+        <item>24 saat (varsayılan)</item>
+        <item>3 gün</item>
+        <item>7 gün</item>
+        <item>30 gün</item>
+    </string-array>
 </resources>

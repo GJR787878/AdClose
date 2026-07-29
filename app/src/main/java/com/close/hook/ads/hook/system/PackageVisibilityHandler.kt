@@ -8,9 +8,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import com.close.hook.ads.hook.util.HookUtil
 import com.close.hook.ads.preference.HookPrefs
-import de.robv.android.xposed.XC_MethodHook
-import de.robv.android.xposed.XposedBridge
 import io.github.libxposed.api.XposedInterface
 import java.lang.reflect.Field
 import java.lang.reflect.Method
@@ -173,23 +172,22 @@ object PackageVisibilityHandler {
         }
 
         return try {
-            filterMethod.isAccessible = true
-            XposedBridge.hookMethod(filterMethod, object : XC_MethodHook() {
-                override fun beforeHookedMethod(param: MethodHookParam) {
-                    val args = param.args
-                    if (args.size != 5 || getPackageName(args[3]) != MODULE_PACKAGE) return
-
-                    val callerPackage = findEnabledCaller(args[2]) ?: return
-                    param.result = false
-                    if (loggedAllowedCallers.add(callerPackage)) {
-                        xposed.log(
-                            Log.INFO,
-                            TAG,
-                            "Allowed targeted query: caller=$callerPackage, target=$MODULE_PACKAGE"
-                        )
+            HookUtil.hookMethod(filterMethod, "before") { param ->
+                val args = param.args
+                if (args.size == 5 && getPackageName(args[3]) == MODULE_PACKAGE) {
+                    val callerPackage = findEnabledCaller(args[2])
+                    if (callerPackage != null) {
+                        param.result = false
+                        if (loggedAllowedCallers.add(callerPackage)) {
+                            xposed.log(
+                                Log.INFO,
+                                TAG,
+                                "Allowed targeted query: caller=$callerPackage, target=$MODULE_PACKAGE"
+                            )
+                        }
                     }
                 }
-            })
+            }
             visibilityHookInstalled = true
             xposed.log(
                 Log.INFO,

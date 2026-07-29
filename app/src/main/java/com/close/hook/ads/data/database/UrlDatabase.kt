@@ -6,12 +6,18 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.close.hook.ads.data.dao.SubscriptionRuleDao
+import com.close.hook.ads.data.dao.SubscriptionSourceDao
 import com.close.hook.ads.data.dao.UrlDao
+import com.close.hook.ads.data.model.SubscriptionRule
+import com.close.hook.ads.data.model.SubscriptionSource
 import com.close.hook.ads.data.model.Url
 
-@Database(entities = [Url::class], version = 5, exportSchema = false)
+@Database(entities = [Url::class, SubscriptionSource::class, SubscriptionRule::class], version = 6, exportSchema = false)
 abstract class UrlDatabase : RoomDatabase() {
     abstract val urlDao: UrlDao
+    abstract val subscriptionSourceDao: SubscriptionSourceDao
+    abstract val subscriptionRuleDao: SubscriptionRuleDao
 
     companion object {
         @Volatile
@@ -45,6 +51,32 @@ abstract class UrlDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6: Migration = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS subscription_source (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "url TEXT NOT NULL, name TEXT NOT NULL, enabled INTEGER NOT NULL, " +
+                        "refreshIntervalMinutes INTEGER NOT NULL, etag TEXT, lastModified TEXT, " +
+                        "lastAttemptAt INTEGER NOT NULL, lastSuccessAt INTEGER NOT NULL, " +
+                        "nextRefreshAt INTEGER NOT NULL, refreshLeaseUntil INTEGER NOT NULL, " +
+                        "ruleCount INTEGER NOT NULL, skippedCount INTEGER NOT NULL, lastError TEXT)"
+                )
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_subscription_source_url ON subscription_source(url)")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS subscription_rule (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, sourceId INTEGER NOT NULL, " +
+                        "type TEXT NOT NULL, value TEXT NOT NULL, " +
+                        "FOREIGN KEY(sourceId) REFERENCES subscription_source(id) ON UPDATE NO ACTION ON DELETE CASCADE)"
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_subscription_rule_sourceId ON subscription_rule(sourceId)")
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS index_subscription_rule_sourceId_type_value " +
+                        "ON subscription_rule(sourceId, type, value)"
+                )
+            }
+        }
+
         fun getDatabase(context: Context): UrlDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -52,7 +84,7 @@ abstract class UrlDatabase : RoomDatabase() {
                     UrlDatabase::class.java,
                     "url_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                 .build().also {
                     instance = it
                 }

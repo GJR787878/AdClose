@@ -9,15 +9,20 @@ import android.database.MatrixCursor
 import android.net.Uri
 import com.close.hook.ads.data.dao.UrlDao
 import com.close.hook.ads.data.database.UrlDatabase
+import com.close.hook.ads.data.model.SubscriptionRule
 import com.close.hook.ads.data.model.Url
 import kotlinx.coroutines.runBlocking
 
 class UrlContentProvider : ContentProvider() {
 
     private lateinit var urlDao: UrlDao
+    private lateinit var subscriptionRuleDao: com.close.hook.ads.data.dao.SubscriptionRuleDao
 
     override fun onCreate(): Boolean = context?.let {
-        urlDao = UrlDatabase.getDatabase(it).urlDao
+        UrlDatabase.getDatabase(it).let { database ->
+            urlDao = database.urlDao
+            subscriptionRuleDao = database.subscriptionRuleDao
+        }
         true
     } ?: false
 
@@ -37,7 +42,7 @@ class UrlContentProvider : ContentProvider() {
 
     private fun handleQueryData(selectionArgs: Array<String>?): Cursor {
         val urls: List<Url> = when {
-            selectionArgs == null -> urlDao.findAllList()
+            selectionArgs == null -> urlDao.findAllList() + subscriptionRuleDao.findEnabledRules().map { it.toUrl() }
 
             selectionArgs.size == 2 -> {
                 val queryType = selectionArgs[0]
@@ -117,6 +122,8 @@ class UrlContentProvider : ContentProvider() {
         if (type.isEmpty() || url.isEmpty()) return null
         return Url(type = type, url = url)
     }
+
+    private fun SubscriptionRule.toUrl(): Url = Url(type = type, url = value, id = -id)
 
     companion object {
         const val AUTHORITY = "com.close.hook.ads.provider.url"

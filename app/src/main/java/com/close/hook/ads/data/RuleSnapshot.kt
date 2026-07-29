@@ -22,8 +22,16 @@ data class RuleSnapshot(
             return RuleMatch(matched = true, ruleType = "URL", ruleUrl = normalizedRequest)
         }
 
-        if (lowerHost.isNotEmpty() && lowerHost in domains) {
-            return RuleMatch(matched = true, ruleType = "Domain", ruleUrl = normalizedHost)
+        if (lowerHost.isNotEmpty()) {
+            var candidate = lowerHost.removeSuffix(".")
+            while (candidate.isNotEmpty()) {
+                if (candidate in domains) {
+                    return RuleMatch(matched = true, ruleType = "Domain", ruleUrl = candidate)
+                }
+                val separator = candidate.indexOf('.')
+                if (separator == -1) break
+                candidate = candidate.substring(separator + 1)
+            }
         }
 
         keywords.firstOrNull { keyword ->
