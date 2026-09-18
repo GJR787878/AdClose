@@ -57,14 +57,19 @@ android {
     compileSdk = 36
     ndkVersion = "28.2.13676358"
 
+    // 签名密钥只从环境变量注入（CI secrets），不落任何明文到仓库。
+    // 本地无 secret 时回退到 debug 签名，保证可构建；发布产物必须走 CI 的 release 签名。
+    val ksPath = System.getenv("KEYSTORE_PATH")
     signingConfigs {
-        create("keyStore") {
-            storeFile = file("AdClose.jks")
-            keyAlias = "AdClose"
-            keyPassword = "rikkati"
-            storePassword = "rikkati"
-            enableV2Signing = true
-            enableV3Signing = true
+        if (ksPath != null) {
+            create("release") {
+                storeFile = file(ksPath)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+                enableV2Signing = true
+                enableV3Signing = true
+            }
         }
     }
 
@@ -110,7 +115,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("keyStore")
+            signingConfig = if (ksPath != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
             
             externalNativeBuild {
                 cmake {
@@ -120,7 +125,7 @@ android {
         }
         getByName("debug") {
             isDebuggable = true
-            signingConfig = signingConfigs.getByName("keyStore")
+            signingConfig = signingConfigs.getByName("debug")
             
             externalNativeBuild {
                 cmake {

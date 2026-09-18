@@ -70,7 +70,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.SIGN_KEY_PASSWORD }}
 
       - name: Collect build metadata
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         id: meta
         run: |
           set -euo pipefail
@@ -93,7 +93,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Stage release artifacts
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         id: stage
         run: |
           set -euo pipefail
@@ -119,7 +119,7 @@ jobs:
           echo "dir=${OUT_DIR}" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         id: notes
         env:
           BRANCH: ${{ steps.meta.outputs.branch }}
@@ -154,7 +154,7 @@ jobs:
           cat release_notes.md
 
       - name: Publish pre-release
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
@@ -165,3 +165,21 @@ jobs:
           target_commitish: ${{ github.sha }}
           files: artifacts/*
           fail_on_unmatched_files: true
+
+      # 手动发布时同步更新版本文件（规范 §4.5）。用 GITHUB_TOKEN 提交不会递归触发本 workflow。
+      - name: Update latest_version.txt
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          VERSION_NAME: ${{ steps.meta.outputs.version_name }}
+        run: |
+          set -euo pipefail
+          echo "${VERSION_NAME}" > latest_version.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add latest_version.txt
+          if git diff --cached --quiet; then
+            echo "latest_version.txt 无变化，跳过提交"
+          else
+            git commit -m "ci: 更新 latest_version.txt 至 ${VERSION_NAME}"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
