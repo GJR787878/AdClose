@@ -49,8 +49,8 @@ public class GlassToggleButton extends CompoundButton {
     }
 
     @Override
-    protected void onDrawableStateChanged() {
-        super.onDrawableStateChanged();
+    protected void drawableStateChanged() {
+        super.drawableStateChanged();
         applyGlass();
     }
 }
