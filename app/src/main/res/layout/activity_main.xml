@@ -10,14 +10,14 @@
         android:layout_height="match_parent"
         android:orientation="horizontal" />
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
+    <com.gjr.glassbutton.GlassNavBar
         android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:labelVisibilityMode="labeled"
         app:layout_anchor="@id/view_pager"
         app:layout_anchorGravity="bottom"
         app:layout_behavior="@string/hide_bottom_view_on_scroll_behavior"
-        app:menu="@menu/bottom_nav_menu" />
+        app:glassCornerRadius="28dp"
+        app:glassHeight="76dp" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

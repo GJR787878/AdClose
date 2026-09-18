@@ -17,16 +17,17 @@ import com.close.hook.ads.ui.fragment.settings.SettingsFragment
 import com.close.hook.ads.util.INavContainer
 import com.close.hook.ads.util.OnBackPressContainer
 import com.close.hook.ads.util.OnBackPressListener
+import androidx.core.content.ContextCompat
+import com.gjr.glassbutton.GlassNavBar
 import com.google.android.material.behavior.HideBottomViewOnScrollBehavior
-import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : BaseActivity(), OnBackPressContainer, INavContainer {
 
     override var backController: OnBackPressListener? = null
     
     private lateinit var viewPager2: ViewPager2
-    private lateinit var bottomNavigationView: BottomNavigationView
-    private lateinit var hideBottomViewOnScrollBehavior: HideBottomViewOnScrollBehavior<BottomNavigationView>
+    private lateinit var bottomNavigationView: GlassNavBar
+    private lateinit var hideBottomViewOnScrollBehavior: HideBottomViewOnScrollBehavior<GlassNavBar>
 
     private val fragmentSuppliers: List<() -> Fragment> = listOf(
         ::AppsPagerFragment,
@@ -46,19 +47,26 @@ class MainActivity : BaseActivity(), OnBackPressContainer, INavContainer {
         viewPager2 = findViewById(R.id.view_pager)
         bottomNavigationView = findViewById(R.id.bottom_navigation)
 
+        // 玻璃导航栏：按 fragment 顺序添加图标 + 文字项
+        val navIcons = listOf(
+            R.drawable.ic_apps, R.drawable.ic_requests, R.drawable.ic_home_outline,
+            R.drawable.ic_block, R.drawable.ic_setting
+        )
+        val navLabels = listOf(
+            R.string.bottom_item_1, R.string.bottom_item_2, R.string.bottom_item_5,
+            R.string.bottom_item_4, R.string.bottom_item_3
+        )
+        for (i in navIcons.indices) {
+            bottomNavigationView.addItem(ContextCompat.getDrawable(this, navIcons[i]), getString(navLabels[i]))
+        }
+
         val adapter = BottomFragmentStateAdapter(supportFragmentManager, lifecycle, fragmentSuppliers)
         viewPager2.adapter = adapter
         viewPager2.isUserInputEnabled = false
         viewPager2.offscreenPageLimit = fragmentSuppliers.size
 
-        bottomNavigationView.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.bottom_item_1 -> viewPager2.setCurrentItem(0, false)
-                R.id.bottom_item_2 -> viewPager2.setCurrentItem(1, false)
-                R.id.bottom_item_3 -> viewPager2.setCurrentItem(2, false)
-                R.id.bottom_item_4 -> viewPager2.setCurrentItem(3, false)
-                R.id.bottom_item_5 -> viewPager2.setCurrentItem(4, false)
-            }
+        bottomNavigationView.setOnItemSelectedListener { index ->
+            viewPager2.setCurrentItem(index, false)
             true
         }
 
@@ -68,7 +76,7 @@ class MainActivity : BaseActivity(), OnBackPressContainer, INavContainer {
         viewPager2.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 super.onPageSelected(position)
-                bottomNavigationView.selectedItemId = bottomNavigationView.menu.getItem(position).itemId
+                bottomNavigationView.setSelected(position)
             }
         })
         viewPager2.setCurrentItem(PrefManager.defaultPage, false)
@@ -98,7 +106,7 @@ class MainActivity : BaseActivity(), OnBackPressContainer, INavContainer {
         }
     }
 
-    fun getBottomNavigationView(): BottomNavigationView {
+    fun getBottomNavigationView(): GlassNavBar {
         return bottomNavigationView
     }
 

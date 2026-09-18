@@ -14,8 +14,9 @@ import com.close.hook.ads.ui.fragment.hook.CustomHookManagerFragment
 import com.close.hook.ads.util.INavContainer
 import com.close.hook.ads.util.OnBackPressContainer
 import com.close.hook.ads.util.OnBackPressListener
+import androidx.core.content.ContextCompat
+import com.gjr.glassbutton.GlassNavBar
 import com.google.android.material.behavior.HideBottomViewOnScrollBehavior
-import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class CustomHookActivity : BaseActivity(), OnBackPressContainer, INavContainer {
 
@@ -29,7 +30,7 @@ class CustomHookActivity : BaseActivity(), OnBackPressContainer, INavContainer {
 
     private val viewPager by lazy { binding.viewPager }
     val bottomNavigationView by lazy { binding.bottomNavigationHook }
-    private val hideBottomViewOnScrollBehavior by lazy { HideBottomViewOnScrollBehavior<BottomNavigationView>() }
+    private val hideBottomViewOnScrollBehavior by lazy { HideBottomViewOnScrollBehavior<GlassNavBar>() }
 
     override var backController: OnBackPressListener? = null
 
@@ -50,19 +51,19 @@ class CustomHookActivity : BaseActivity(), OnBackPressContainer, INavContainer {
 
             registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
                 override fun onPageSelected(position: Int) {
-                    bottomNavigationView.menu.getItem(position).isChecked = true
+                    bottomNavigationView.setSelected(position)
                 }
             })
         }
     }
 
     private fun setupBottomNavigation() {
+        // 玻璃导航栏：添加两项 Hook / Log
+        bottomNavigationView.addItem(ContextCompat.getDrawable(this, R.drawable.ic_hook_manager), "Hook")
+        bottomNavigationView.addItem(ContextCompat.getDrawable(this, R.drawable.ic_log), "Log")
         (bottomNavigationView.layoutParams as? CoordinatorLayout.LayoutParams)?.behavior = hideBottomViewOnScrollBehavior
-        bottomNavigationView.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_hook_manager -> viewPager.currentItem = MANAGER_FRAGMENT_INDEX
-                R.id.nav_hook_log -> viewPager.currentItem = LOG_FRAGMENT_INDEX
-            }
+        bottomNavigationView.setOnItemSelectedListener { index ->
+            viewPager.currentItem = index
             true
         }
     }

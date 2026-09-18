@@ -7,10 +7,17 @@
     <!-- 全局属性（Android 要求每个属性名全局唯一） -->
     <attr name="glassSelected" format="boolean" />
     <attr name="glassCornerRadius" format="dimension" />
+    <attr name="glassHeight" format="dimension" />
 
     <!-- 玻璃胶囊按钮 -->
     <declare-styleable name="GlassCapsuleButton">
         <attr name="glassSelected" />
         <attr name="glassCornerRadius" />
+    </declare-styleable>
+
+    <!-- 玻璃导航栏（底部横排 / 左侧竖排） -->
+    <declare-styleable name="GlassNavBar">
+        <attr name="glassCornerRadius" />
+        <attr name="glassHeight" />
     </declare-styleable>
 </resources>
