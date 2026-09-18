@@ -5,6 +5,9 @@ import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.widget.Button;
 
+// 主 R（attrs_glass.xml 声明的 GlassCapsuleButton styleable 位于主应用资源包）
+import com.close.hook.ads.R;
+
 /**
  * 玻璃拟态胶囊按钮。
  *
