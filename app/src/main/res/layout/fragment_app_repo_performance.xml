@@ -13,13 +13,11 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <com.google.android.material.button.MaterialButton
+        <com.gjr.glassbutton.GlassCapsuleButton
             android:id="@+id/runTestButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingVertical="@dimen/spacing_medium"
-            android:text="运行应用数据测试"
-            android:textSize="16sp" />
+            android:text="运行应用数据测试" />
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/summary_card"

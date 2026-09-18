@@ -123,28 +123,21 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/actionDivider">
 
-            <com.google.android.material.button.MaterialButton
+            <com.gjr.glassbutton.GlassCapsuleButton
                 android:id="@+id/refreshButton"
-                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="@dimen/spacing_xsmall"
                 android:layout_weight="1"
-                android:text="@string/subscription_refresh"
-                app:icon="@drawable/ic_refresh" />
+                android:text="@string/subscription_refresh" />
 
-            <com.google.android.material.button.MaterialButton
+            <com.gjr.glassbutton.GlassCapsuleButton
                 android:id="@+id/deleteButton"
-                style="?attr/materialButtonOutlinedStyle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="@dimen/spacing_xsmall"
                 android:layout_weight="1"
-                android:text="@string/action_delete"
-                android:textColor="?attr/colorError"
-                app:icon="@drawable/ic_outline_delete_24"
-                app:iconTint="?attr/colorError"
-                app:strokeColor="?attr/colorError" />
+                android:text="@string/action_delete" />
 
         </LinearLayout>
 

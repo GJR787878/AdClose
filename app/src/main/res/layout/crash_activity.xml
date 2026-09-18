@@ -32,7 +32,7 @@
             android:layout_marginTop="70dp"
             android:orientation="horizontal" >
 
-            <Button
+            <com.gjr.glassbutton.GlassCapsuleButton
                 android:id="@+id/b_restart"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -40,7 +40,7 @@
                 android:layout_weight="1"
                 android:text="RESTART" />
 
-            <Button
+            <com.gjr.glassbutton.GlassCapsuleButton
                 android:id="@+id/b_detail"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

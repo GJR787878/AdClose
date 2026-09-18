@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  玻璃拟态按钮组件（GlassButtons，来自 com.gjr.glassbutton）自定义属性。
+  统一控件风格：玻璃胶囊按钮，新按钮一律复用本组件，不另起样式（app-dev-specs §3.2）。
+-->
+<resources>
+    <!-- 全局属性（Android 要求每个属性名全局唯一） -->
+    <attr name="glassSelected" format="boolean" />
+    <attr name="glassCornerRadius" format="dimension" />
+
+    <!-- 玻璃胶囊按钮 -->
+    <declare-styleable name="GlassCapsuleButton">
+        <attr name="glassSelected" />
+        <attr name="glassCornerRadius" />
+    </declare-styleable>
+</resources>

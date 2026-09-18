@@ -83,24 +83,18 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp">
 
-        <Button
+        <com.gjr.glassbutton.GlassCapsuleButton
             android:id="@+id/detail"
-            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
             android:text="@string/details"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <Button
+        <com.gjr.glassbutton.GlassCapsuleButton
             android:id="@+id/launch"
-            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
             android:text="@string/open"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
